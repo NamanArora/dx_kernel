@@ -276,9 +276,6 @@ static void scsi_run_queue(struct request_queue *q)
 	LIST_HEAD(starved_list);
 	unsigned long flags;
 
-	
-	if (!sdev)
-		return;
 
 	shost = sdev->host;
 	if (scsi_target(sdev)->single_lun)
@@ -978,12 +975,26 @@ static inline int scsi_host_queue_ready(struct request_queue *q,
 	return 1;
 }
 
+
+/*
+ * Busy state exporting function for request stacking drivers.
+ *
+ * For efficiency, no lock is taken to check the busy state of
+ * shost/starget/sdev, since the returned value is not guaranteed and
+ * may be changed after request stacking drivers call the function,
+ * regardless of taking lock or not.
+ *
+ * When scsi can't dispatch I/Os anymore and needs to kill I/Os scsi
+ * needs to return 'not busy'. Otherwise, request stacking drivers
+ * may hold requests forever.
+ */
+
 static int scsi_lld_busy(struct request_queue *q)
 {
 	struct scsi_device *sdev = q->queuedata;
 	struct Scsi_Host *shost;
 
-	if (!sdev)
+	if (blk_queue_dead(q))
 		return 0;
 
 	shost = sdev->host;
@@ -1074,12 +1085,6 @@ static void scsi_request_fn(struct request_queue *q)
 	struct Scsi_Host *shost;
 	struct scsi_cmnd *cmd;
 	struct request *req;
-
-	if (!sdev) {
-		while ((req = blk_peek_request(q)) != NULL)
-			scsi_kill_request(req, q);
-		return;
-	}
 
 	if(!get_device(&sdev->sdev_gendev))
 		
@@ -1229,19 +1234,23 @@ struct request_queue *scsi_alloc_queue(struct scsi_device *sdev)
 	return q;
 }
 
-void scsi_free_queue(struct request_queue *q)
-{
-	unsigned long flags;
 
-	WARN_ON(q->queuedata);
-
-	
-	spin_lock_irqsave(q->queue_lock, flags);
-	q->request_fn(q);
-	spin_unlock_irqrestore(q->queue_lock, flags);
-
-	blk_cleanup_queue(q);
-}
+/*
+ * Function:    scsi_block_requests()
+ *
+ * Purpose:     Utility function used by low-level drivers to prevent further
+ *		commands from being queued to the device.
+ *
+ * Arguments:   shost       - Host in question
+ *
+ * Returns:     Nothing
+ *
+ * Lock status: No locks are assumed held.
+ *
+ * Notes:       There is no timer nor any other means by which the requests
+ *		get unblocked other than the low-level driver calling
+ *		scsi_unblock_requests().
+ */
 
 void scsi_block_requests(struct Scsi_Host *shost)
 {
