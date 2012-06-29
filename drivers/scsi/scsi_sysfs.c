@@ -903,11 +903,10 @@ void __scsi_remove_device(struct scsi_device *sdev)
 		sdev->host->hostt->slave_destroy(sdev);
 	transport_destroy_device(dev);
 
-	
-	sdev->request_queue->queuedata = NULL;
 
-	
-	scsi_free_queue(sdev->request_queue);
+	/* Freeing the queue signals to block that we're done */
+	blk_cleanup_queue(sdev->request_queue);
+
 	put_device(dev);
 }
 
