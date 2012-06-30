@@ -1432,8 +1432,7 @@ struct mmpd_data {
 # define ATTRIB_NORET	__attribute__((noreturn))
 # define NORET_AND	noreturn,
 
-extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
-
+extern unsigned int ext4_count_free(char *bitmap, unsigned numchars);
 extern unsigned int ext4_block_group(struct super_block *sb,
 			ext4_fsblk_t blocknr);
 extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
