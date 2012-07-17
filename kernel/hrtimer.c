@@ -937,9 +937,18 @@ void hrtimer_interrupt(struct clock_event_device *dev)
 	dev->next_event.tv64 = KTIME_MAX;
 
 	raw_spin_lock(&cpu_base->lock);
-	entry_time = now = hrtimer_update_base(cpu_base);
+
+	entry_time = now = ktime_get();
 retry:
 	expires_next.tv64 = KTIME_MAX;
+	/*
+	 * We set expires_next to KTIME_MAX here with cpu_base->lock
+	 * held to prevent that a timer is enqueued in our queue via
+	 * the migration code. This does not affect enqueueing of
+	 * timers which run their callback and need to be requeued on
+	 * this CPU.
+	 */
+
 	cpu_base->expires_next.tv64 = KTIME_MAX;
 
 	for (i = 0; i < HRTIMER_MAX_CLOCK_BASES; i++) {
@@ -983,8 +992,18 @@ retry:
 		return;
 	}
 
+	/*
+	 * The next timer was already expired due to:
+	 * - tracing
+	 * - long lasting callbacks
+	 * - being scheduled away when running in a VM
+	 *
+	 * We need to prevent that we loop forever in the hrtimer
+	 * interrupt routine. We give it 3 attempts to avoid
+	 * overreacting on some spurious event.
+	 */
 	raw_spin_lock(&cpu_base->lock);
-	now = hrtimer_update_base(cpu_base);
+	now = ktime_get();
 	cpu_base->nr_retries++;
 	if (++retries < 3)
 		goto retry;
