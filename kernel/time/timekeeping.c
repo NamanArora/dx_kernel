@@ -51,13 +51,14 @@ struct timekeeper {
 	
 	struct timespec raw_time;
 
-	
+	/* Offset clock monotonic -> clock realtime */
 	ktime_t offs_real;
 
-	
+	/* Offset clock monotonic -> clock boottime */
 	ktime_t offs_boot;
 
-	
+	/* Seqlock for all timekeeper values */
+
 	seqlock_t lock;
 };
 
@@ -145,6 +146,9 @@ static void update_rt_offset(void)
 	set_normalized_timespec(&tmp, -wtm->tv_sec, -wtm->tv_nsec);
 	timekeeper.offs_real = timespec_to_ktime(tmp);
 }
+
+
+/* must hold write on timekeeper.lock */
 
 static void timekeeping_update(bool clearntp)
 {
@@ -491,6 +495,15 @@ static void update_sleep_time(struct timespec t)
 	timekeeper.total_sleep_time = t;
 	timekeeper.offs_boot = timespec_to_ktime(t);
 }
+
+
+/**
+ * __timekeeping_inject_sleeptime - Internal function to add sleep interval
+ * @delta: pointer to a timespec delta value
+ *
+ * Takes a timespec offset measuring a suspend interval and properly
+ * adds the sleep offset to the timekeeping variables.
+ */
 
 static void __timekeeping_inject_sleeptime(struct timespec *delta)
 {
