@@ -491,6 +491,7 @@ static inline int hrtimer_enqueue_reprogram(struct hrtimer *timer,
 	return base->cpu_base->hres_active && hrtimer_reprogram(timer, base);
 }
 
+
 static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
 {
 	ktime_t *offs_real = &base->clock_base[HRTIMER_BASE_REALTIME].offset;
@@ -498,6 +499,12 @@ static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
 
 	return ktime_get_update_offsets(offs_real, offs_boot);
 }
+
+/*
+ * Retrigger next event is called after clock was set
+ *
+ * Called with interrupts disabled via on_each_cpu()
+ */
 
 static void retrigger_next_event(void *arg)
 {
@@ -534,7 +541,7 @@ static int hrtimer_switch_to_hres(void)
 		base->clock_base[i].resolution = KTIME_HIGH_RES;
 
 	tick_setup_sched_timer();
-	
+
 	retrigger_next_event(NULL);
 	local_irq_restore(flags);
 	return 1;
@@ -937,8 +944,8 @@ void hrtimer_interrupt(struct clock_event_device *dev)
 	dev->next_event.tv64 = KTIME_MAX;
 
 	raw_spin_lock(&cpu_base->lock);
+	entry_time = now = hrtimer_update_base(cpu_base);
 
-	entry_time = now = ktime_get();
 retry:
 	expires_next.tv64 = KTIME_MAX;
 	/*
@@ -1001,9 +1008,12 @@ retry:
 	 * We need to prevent that we loop forever in the hrtimer
 	 * interrupt routine. We give it 3 attempts to avoid
 	 * overreacting on some spurious event.
+	 *
+	 * Acquire base lock for updating the offsets and retrieving
+	 * the current time.
 	 */
 	raw_spin_lock(&cpu_base->lock);
-	now = ktime_get();
+	now = hrtimer_update_base(cpu_base);
 	cpu_base->nr_retries++;
 	if (++retries < 3)
 		goto retry;
