@@ -972,8 +972,15 @@ static struct sock *l2cap_get_sock_by_scid(int state, __le16 cid, bdaddr_t *src)
 
 	read_unlock(&l2cap_sk_list.lock);
 
+<<<<<<< HEAD
 	return node ? sk : sk1;
 }
+=======
+	sk = chan->sk;
+
+	hci_conn_hold(conn->hcon);
+	conn->hcon->disc_timeout = HCI_DISCONN_TIMEOUT;
+>>>>>>> 3cf3cfc... Bluetooth: Fix legacy pairing with some devices
 
 static void l2cap_le_conn_ready(struct l2cap_conn *conn)
 {
