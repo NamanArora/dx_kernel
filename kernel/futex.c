@@ -1561,7 +1561,14 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
 			spin_unlock(q.lock_ptr);
 		}
 	} else {
-		WARN_ON(!&q.pi_state);
+
+		/*
+		 * We have been woken up by futex_unlock_pi(), a timeout, or a
+		 * signal.  futex_unlock_pi() will not destroy the lock_ptr nor
+		 * the pi_state.
+		 */
+		WARN_ON(!q.pi_state);
+
 		pi_mutex = &q.pi_state->pi_mutex;
 		ret = rt_mutex_finish_proxy_lock(pi_mutex, to, &rt_waiter, 1);
 		debug_rt_mutex_free_waiter(&rt_waiter);
