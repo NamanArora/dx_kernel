@@ -16,9 +16,6 @@
 #include <linux/module.h>
 #include <kgsl_device.h>
 
-
-#include "kgsl_trace.h"
-
 static void _add_event_to_list(struct list_head *head, struct kgsl_event *event)
 {
 	struct list_head *n;
@@ -74,7 +71,6 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	 */
 
 	if (timestamp_cmp(cur_ts, ts) >= 0) {
-		trace_kgsl_fire_event(id, ts, 0);
 		cb(device, priv, id, ts);
 		return 0;
 	}
@@ -88,13 +84,6 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	event->priv = priv;
 	event->func = cb;
 	event->owner = owner;
-	event->created = jiffies;
-
-	trace_kgsl_register_event(id, ts);
-
-	/* inc refcount to avoid race conditions in cleanup */
-	if (context)
-		kgsl_context_get(context);
 
 	/* Add the event to either the owning context or the global list */
 
@@ -143,14 +132,11 @@ void kgsl_cancel_events_ctxt(struct kgsl_device *device,
 		 * Send the current timestamp so the event knows how far the
 		 * system got before the event was canceled
 		 */
-		list_del(&event->list);
-
-		trace_kgsl_fire_event(id, cur, jiffies - event->created);
 
 		if (event->func)
 			event->func(device, event->priv, id, cur);
 
-		kgsl_context_put(context);
+		list_del(&event->list);
 		kfree(event);
 	}
 
@@ -184,17 +170,11 @@ void kgsl_cancel_events(struct kgsl_device *device,
 		 * the callback knows how far the GPU made it before things went
 		 * explosion
 		 */
-		list_del(&event->list);
-
-		trace_kgsl_fire_event(KGSL_MEMSTORE_GLOBAL, cur,
-			jiffies - event->created);
-
 		if (event->func)
 			event->func(device, event->priv, KGSL_MEMSTORE_GLOBAL,
 				cur);
 
-		if (event->context)
-			kgsl_context_put(event->context);
+		list_del(&event->list);
 		kfree(event);
 	}
 }
@@ -218,58 +198,36 @@ static void _process_event_list(struct kgsl_device *device,
 		 * confused if they don't bother comparing the current timetamp
 		 * to the timestamp they wanted
 		 */
-		list_del(&event->list);
-
-		trace_kgsl_fire_event(id, event->timestamp,
-			jiffies - event->created);
 
 		if (event->func)
 			event->func(device, event->priv, id, event->timestamp);
 
-		if (event->context)
-			kgsl_context_put(event->context);
+		list_del(&event->list);
 		kfree(event);
 	}
 }
 
-static inline int _mark_next_event(struct kgsl_device *device,
+static inline void _mark_next_event(struct kgsl_device *device,
 		struct list_head *head)
 {
 	struct kgsl_event *event;
 
 	if (!list_empty(head)) {
 		event = list_first_entry(head, struct kgsl_event, list);
-
-		/*
-		 * Next event will return 0 if the event was marked or 1 if the
-		 * timestamp on the event has passed - return that up a layer
-		 */
-
-		if (device->ftbl->next_event)
-			return device->ftbl->next_event(device, event);
+		device->ftbl->next_event(device, event);
 	}
-
-	return 0;
 }
 
 static int kgsl_process_context_events(struct kgsl_device *device,
 		struct kgsl_context *context)
 {
-	while (1) {
-		unsigned int timestamp = kgsl_readtimestamp(device, context,
-			KGSL_TIMESTAMP_RETIRED);
+	unsigned int timestamp = kgsl_readtimestamp(device, context,
+		KGSL_TIMESTAMP_RETIRED);
 
-		_process_event_list(device, &context->events, timestamp);
+	_process_event_list(device, &context->events, timestamp);
 
-		/*
-		 * _mark_next event will return 1 as long as the next event
-		 * timestamp has expired - this is to cope with an unavoidable
-		 * race condition with the GPU that is still processing events.
-		 */
-
-		if (!_mark_next_event(device, &context->events))
-			break;
-	}
+	/* Mark the next pending event on the list to fire an interrupt */
+	_mark_next_event(device, &context->events);
 
 	/*
 	 * Return 0 if the list is empty so the calling function can remove the
