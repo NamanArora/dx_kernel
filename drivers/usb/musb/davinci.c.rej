@@ -1,0 +1,10 @@
+--- drivers/usb/musb/davinci.c
++++ drivers/usb/musb/davinci.c
+@@ -34,6 +34,7 @@
+ #include <linux/dma-mapping.h>
+ 
+ #include <mach/cputype.h>
++#include <mach/hardware.h>
+ 
+ #include <asm/mach-types.h>
+ 

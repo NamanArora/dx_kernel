@@ -1,0 +1,26 @@
+--- drivers/gpu/drm/radeon/rv770.c
++++ drivers/gpu/drm/radeon/rv770.c
+@@ -691,8 +693,12 @@
+ 
+ 	if (rdev->family == CHIP_RV770)
+ 		gb_tiling_config |= BANK_TILING(1);
+-	else
+-		gb_tiling_config |= BANK_TILING((mc_arb_ramcfg & NOOFBANK_MASK) >> NOOFBANK_SHIFT);
++	else {
++		if ((mc_arb_ramcfg & NOOFBANK_MASK) >> NOOFBANK_SHIFT)
++			gb_tiling_config |= BANK_TILING(1);
++		else
++			gb_tiling_config |= BANK_TILING(0);
++	}
+ 	rdev->config.rv770.tiling_nbanks = 4 << ((gb_tiling_config >> 4) & 0x3);
+ 	gb_tiling_config |= GROUP_SIZE((mc_arb_ramcfg & BURSTLENGTH_MASK) >> BURSTLENGTH_SHIFT);
+ 	if ((mc_arb_ramcfg & BURSTLENGTH_MASK) >> BURSTLENGTH_SHIFT)
+@@ -959,7 +968,7 @@
+ 
+ 	WREG32(PA_CL_ENHANCE, (CLIP_VTX_REORDER_ENA |
+ 					  NUM_CLIP_SEQ(3)));
+-
++	WREG32(VC_ENHANCE, 0);
+ }
+ 
+ void r700_vram_gtt_location(struct radeon_device *rdev, struct radeon_mc *mc)

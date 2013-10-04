@@ -1,0 +1,21 @@
+--- drivers/gpu/drm/i915/intel_ringbuffer.c
++++ drivers/gpu/drm/i915/intel_ringbuffer.c
+@@ -309,6 +309,7 @@
+ 		ring->head = I915_READ_HEAD(ring);
+ 		ring->tail = I915_READ_TAIL(ring) & TAIL_ADDR;
+ 		ring->space = ring_space(ring);
++		ring->last_retired_head = -1;
+ 	}
+ 
+ 	return 0;
+@@ -1026,6 +1027,10 @@
+ 	if (ret)
+ 		goto err_unref;
+ 
++	ret = i915_gem_object_set_to_gtt_domain(obj, true);
++	if (ret)
++		goto err_unpin;
++
+ 	ring->map.size = ring->size;
+ 	ring->map.offset = dev->agp->base + obj->gtt_offset;
+ 	ring->map.type = 0;

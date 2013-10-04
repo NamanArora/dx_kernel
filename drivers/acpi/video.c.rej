@@ -1,0 +1,23 @@
+--- drivers/acpi/video.c
++++ drivers/acpi/video.c
+@@ -1747,6 +1749,7 @@
+ 
+ static int __init intel_opregion_present(void)
+ {
++	int i915 = 0;
+ #if defined(CONFIG_DRM_I915) || defined(CONFIG_DRM_I915_MODULE)
+ 	struct pci_dev *dev = NULL;
+ 	u32 address;
+@@ -1759,10 +1762,10 @@
+ 		pci_read_config_dword(dev, 0xfc, &address);
+ 		if (!address)
+ 			continue;
+-		return 1;
++		i915 = 1;
+ 	}
+ #endif
+-	return 0;
++	return i915;
+ }
+ 
+ int acpi_video_register(void)

@@ -1,0 +1,10 @@
+--- drivers/usb/musb/musb_gadget.c
++++ drivers/usb/musb/musb_gadget.c
+@@ -1232,6 +1232,7 @@
+ 	}
+ 
+ 	musb_ep->desc = NULL;
++	musb_ep->end_point.desc = NULL;
+ 
+ 	/* abort all pending DMA and requests */
+ 	nuke(musb_ep, -ESHUTDOWN);

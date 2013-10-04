@@ -1,0 +1,12 @@
+--- drivers/net/wireless/rt2x00/rt2x00.h
++++ drivers/net/wireless/rt2x00/rt2x00.h
+@@ -396,8 +396,7 @@
+ 	 * for hardware which doesn't support hardware
+ 	 * sequence counting.
+ 	 */
+-	spinlock_t seqlock;
+-	u16 seqno;
++	atomic_t seqno;
+ };
+ 
+ static inline struct rt2x00_intf* vif_to_intf(struct ieee80211_vif *vif)

@@ -1,0 +1,10 @@
+--- drivers/net/wireless/rt2x00/rt2x00mac.c
++++ drivers/net/wireless/rt2x00/rt2x00mac.c
+@@ -277,7 +277,6 @@
+ 	else
+ 		rt2x00dev->intf_sta_count++;
+ 
+-	spin_lock_init(&intf->seqlock);
+ 	mutex_init(&intf->beacon_skb_mutex);
+ 	intf->beacon = entry;
+ 

@@ -1,0 +1,33 @@
+--- drivers/iommu/intel-iommu.c
++++ drivers/iommu/intel-iommu.c
+@@ -2286,12 +2286,6 @@
+ 	if (!info)
+ 		return -ENOMEM;
+ 
+-	ret = domain_context_mapping(domain, pdev, translation);
+-	if (ret) {
+-		free_devinfo_mem(info);
+-		return ret;
+-	}
+-
+ 	info->segment = pci_domain_nr(pdev->bus);
+ 	info->bus = pdev->bus->number;
+ 	info->devfn = pdev->devfn;
+@@ -2304,6 +2298,17 @@
+ 	pdev->dev.archdata.iommu = info;
+ 	spin_unlock_irqrestore(&device_domain_lock, flags);
+ 
++	ret = domain_context_mapping(domain, pdev, translation);
++	if (ret) {
++		spin_lock_irqsave(&device_domain_lock, flags);
++		list_del(&info->link);
++		list_del(&info->global);
++		pdev->dev.archdata.iommu = NULL;
++		spin_unlock_irqrestore(&device_domain_lock, flags);
++		free_devinfo_mem(info);
++		return ret;
++	}
++
+ 	return 0;
+ }
+ 
