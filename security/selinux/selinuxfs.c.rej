@@ -1,0 +1,10 @@
+--- security/selinux/selinuxfs.c
++++ security/selinux/selinuxfs.c
+@@ -1232,6 +1232,7 @@
+ 		kfree(bool_pending_names[i]);
+ 	kfree(bool_pending_names);
+ 	kfree(bool_pending_values);
++	bool_num = 0;
+ 	bool_pending_names = NULL;
+ 	bool_pending_values = NULL;
+ 

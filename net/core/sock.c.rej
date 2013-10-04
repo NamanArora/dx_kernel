@@ -1,0 +1,17 @@
+--- net/core/sock.c
++++ net/core/sock.c
+@@ -1623,14 +1628,12 @@
+ 		if (atomic_read(&sk->sk_wmem_alloc) < sk->sk_sndbuf) {
+ 			skb = alloc_skb(header_len, gfp_mask);
+ 			if (skb) {
+-				int npages;
+ 				int i;
+ 
+ 				/* No pages, we're done... */
+ 				if (!data_len)
+ 					break;
+ 
+-				npages = (data_len + (PAGE_SIZE - 1)) >> PAGE_SHIFT;
+ 				skb->truesize += data_len;
+ 				skb_shinfo(skb)->nr_frags = npages;
+ 				for (i = 0; i < npages; i++) {
