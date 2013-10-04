@@ -1,0 +1,53 @@
+--- drivers/edac/i7core_edac.c
++++ drivers/edac/i7core_edac.c
+@@ -1932,12 +1932,6 @@
+ 	if (mce->bank != 8)
+ 		return NOTIFY_DONE;
+ 
+-#ifdef CONFIG_SMP
+-	/* Only handle if it is the right mc controller */
+-	if (mce->socketid != pvt->i7core_dev->socket)
+-		return NOTIFY_DONE;
+-#endif
+-
+ 	smp_rmb();
+ 	if ((pvt->mce_out + 1) % MCE_LOG_LEN == pvt->mce_in) {
+ 		smp_wmb();
+@@ -2234,8 +2228,6 @@
+ 	if (pvt->enable_scrub)
+ 		disable_sdram_scrub_setting(mci);
+ 
+-	mce_unregister_decode_chain(&i7_mce_dec);
+-
+ 	/* Disable EDAC polling */
+ 	i7core_pci_ctl_release(pvt);
+ 
+@@ -2336,8 +2328,6 @@
+ 	/* DCLK for scrub rate setting */
+ 	pvt->dclk_freq = get_dclk_freq();
+ 
+-	mce_register_decode_chain(&i7_mce_dec);
+-
+ 	return 0;
+ 
+ fail0:
+@@ -2481,8 +2471,10 @@
+ 
+ 	pci_rc = pci_register_driver(&i7core_driver);
+ 
+-	if (pci_rc >= 0)
++	if (pci_rc >= 0) {
++		mce_register_decode_chain(&i7_mce_dec);
+ 		return 0;
++	}
+ 
+ 	i7core_printk(KERN_ERR, "Failed to register device with error %d.\n",
+ 		      pci_rc);
+@@ -2498,6 +2490,7 @@
+ {
+ 	debugf2("MC: " __FILE__ ": %s()\n", __func__);
+ 	pci_unregister_driver(&i7core_driver);
++	mce_unregister_decode_chain(&i7_mce_dec);
+ }
+ 
+ module_init(i7core_init);

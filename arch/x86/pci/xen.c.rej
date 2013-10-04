@@ -1,0 +1,13 @@
+--- arch/x86/pci/xen.c
++++ arch/x86/pci/xen.c
+@@ -64,6 +64,10 @@
+ 	int shareable = 0;
+ 	char *name;
+ 
++	irq = xen_irq_from_gsi(gsi);
++	if (irq > 0)
++		return irq;
++
+ 	if (set_pirq)
+ 		pirq = gsi;
+ 

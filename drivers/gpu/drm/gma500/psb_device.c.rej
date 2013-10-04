@@ -1,0 +1,22 @@
+--- drivers/gpu/drm/gma500/psb_device.c
++++ drivers/gpu/drm/gma500/psb_device.c
+@@ -197,7 +197,8 @@
+ 	}
+ 
+ 	list_for_each_entry(connector, &dev->mode_config.connector_list, head)
+-		connector->funcs->save(connector);
++		if (connector->funcs->save)
++			connector->funcs->save(connector);
+ 
+ 	mutex_unlock(&dev->mode_config.mutex);
+ 	return 0;
+@@ -235,7 +236,8 @@
+ 			crtc->funcs->restore(crtc);
+ 
+ 	list_for_each_entry(connector, &dev->mode_config.connector_list, head)
+-		connector->funcs->restore(connector);
++		if (connector->funcs->restore)
++			connector->funcs->restore(connector);
+ 
+ 	mutex_unlock(&dev->mode_config.mutex);
+ 	return 0;

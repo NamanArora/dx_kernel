@@ -1,0 +1,10 @@
+--- drivers/tty/serial/serial_core.c
++++ drivers/tty/serial/serial_core.c
+@@ -2285,6 +2285,7 @@
+ 	tty_unregister_driver(p);
+ 	put_tty_driver(p);
+ 	kfree(drv->state);
++	drv->state = NULL;
+ 	drv->tty_driver = NULL;
+ }
+ 

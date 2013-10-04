@@ -1,0 +1,11 @@
+--- drivers/gpu/drm/nouveau/nouveau_bo.c
++++ drivers/gpu/drm/nouveau/nouveau_bo.c
+@@ -1030,7 +1030,7 @@
+ 
+ 	nvbo->placement.fpfn = 0;
+ 	nvbo->placement.lpfn = dev_priv->fb_mappable_pages;
+-	nouveau_bo_placement_set(nvbo, TTM_PL_VRAM, 0);
++	nouveau_bo_placement_set(nvbo, TTM_PL_FLAG_VRAM, 0);
+ 	return nouveau_bo_validate(nvbo, false, true, false);
+ }
+ 
