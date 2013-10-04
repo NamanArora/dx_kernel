@@ -1,0 +1,12 @@
+--- fs/fuse/fuse_i.h
++++ fs/fuse/fuse_i.h
+@@ -82,6 +82,9 @@
+ 	    preserve the original mode */
+ 	umode_t orig_i_mode;
+ 
++	/** 64 bit inode number */
++	u64 orig_ino;
++
+ 	/** Version of last attribute change */
+ 	u64 attr_version;
+ 
