@@ -1,0 +1,21 @@
+--- lib/btree.c
++++ lib/btree.c
+@@ -319,8 +319,8 @@
+ 
+ 	if (head->height == 0)
+ 		return NULL;
+-retry:
+ 	longcpy(key, __key, geo->keylen);
++retry:
+ 	dec_key(geo, key);
+ 
+ 	node = head->node;
+@@ -351,7 +351,7 @@
+ 	}
+ miss:
+ 	if (retry_key) {
+-		__key = retry_key;
++		longcpy(key, retry_key, geo->keylen);
+ 		retry_key = NULL;
+ 		goto retry;
+ 	}

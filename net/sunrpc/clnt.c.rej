@@ -1,0 +1,11 @@
+--- net/sunrpc/clnt.c
++++ net/sunrpc/clnt.c
+@@ -1288,6 +1288,8 @@
+ 	}
+ 
+ 	switch (status) {
++	case -ENOMEM:
++		rpc_delay(task, HZ >> 2);
+ 	case -EAGAIN:	/* woken up; retry */
+ 		task->tk_action = call_reserve;
+ 		return;

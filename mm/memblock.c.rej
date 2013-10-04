@@ -1,0 +1,71 @@
+--- mm/memblock.c
++++ mm/memblock.c
+@@ -143,30 +145,6 @@
+ 					   MAX_NUMNODES);
+ }
+ 
+-/*
+- * Free memblock.reserved.regions
+- */
+-int __init_memblock memblock_free_reserved_regions(void)
+-{
+-	if (memblock.reserved.regions == memblock_reserved_init_regions)
+-		return 0;
+-
+-	return memblock_free(__pa(memblock.reserved.regions),
+-		 sizeof(struct memblock_region) * memblock.reserved.max);
+-}
+-
+-/*
+- * Reserve memblock.reserved.regions
+- */
+-int __init_memblock memblock_reserve_reserved_regions(void)
+-{
+-	if (memblock.reserved.regions == memblock_reserved_init_regions)
+-		return 0;
+-
+-	return memblock_reserve(__pa(memblock.reserved.regions),
+-		 sizeof(struct memblock_region) * memblock.reserved.max);
+-}
+-
+ static void __init_memblock memblock_remove_region(struct memblock_type *type, unsigned long r)
+ {
+ 	type->total_size -= type->regions[r].size;
+@@ -291,21 +324,23 @@
+ 	type->regions = new_array;
+ 	type->max <<= 1;
+ 
+-	/* If we use SLAB that's it, we are done */
+-	if (use_slab)
+-		return 0;
+-
+-	/* Add the new reserved region now. Should not fail ! */
+-	BUG_ON(memblock_reserve(addr, new_size));
+-
+-	/* If the array wasn't our static init one, then free it. We only do
+-	 * that before SLAB is available as later on, we don't know whether
+-	 * to use kfree or free_bootmem_pages(). Shouldn't be a big deal
+-	 * anyways
++	/* Free old array. We needn't free it if the array is the
++	 * static one
+ 	 */
+-	if (old_array != memblock_memory_init_regions &&
+-	    old_array != memblock_reserved_init_regions)
+-		memblock_free(__pa(old_array), old_size);
++	if (*in_slab)
++		kfree(old_array);
++	else if (old_array != memblock_memory_init_regions &&
++		 old_array != memblock_reserved_init_regions)
++		memblock_free(__pa(old_array), old_alloc_size);
++
++	/* Reserve the new array if that comes from the memblock.
++	 * Otherwise, we needn't do it
++	 */
++	if (!use_slab)
++		BUG_ON(memblock_reserve(addr, new_alloc_size));
++
++	/* Update slab flag */
++	*in_slab = use_slab;
+ 
+ 	return 0;
+ }

@@ -1,0 +1,12 @@
+--- net/xfrm/xfrm_policy.c
++++ net/xfrm/xfrm_policy.c
+@@ -1919,6 +1919,9 @@
+ 	}
+ ok:
+ 	xfrm_pols_put(pols, drop_pols);
++	if (dst && dst->xfrm &&
++	    dst->xfrm->props.mode == XFRM_MODE_TUNNEL)
++		dst->flags |= DST_XFRM_TUNNEL;
+ 	return dst;
+ 
+ nopol:
