@@ -1,0 +1,11 @@
+--- fs/hfsplus/wrapper.c
++++ fs/hfsplus/wrapper.c
+@@ -56,7 +56,7 @@
+ 	DECLARE_COMPLETION_ONSTACK(wait);
+ 	struct bio *bio;
+ 	int ret = 0;
+-	unsigned int io_size;
++	u64 io_size;
+ 	loff_t start;
+ 	int offset;
+ 

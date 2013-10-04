@@ -1,0 +1,11 @@
+--- fs/proc/task_mmu.c
++++ fs/proc/task_mmu.c
+@@ -784,7 +784,7 @@
+ 
+ 	/* find the first VMA at or above 'addr' */
+ 	vma = find_vma(walk->mm, addr);
+-	if (pmd_trans_huge_lock(pmd, vma) == 1) {
++	if (vma && pmd_trans_huge_lock(pmd, vma) == 1) {
+ 		for (; addr != end; addr += PAGE_SIZE) {
+ 			unsigned long offset;
+ 

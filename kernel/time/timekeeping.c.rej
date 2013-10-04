@@ -1,0 +1,18 @@
+--- kernel/time/timekeeping.c
++++ kernel/time/timekeeping.c
+@@ -964,6 +964,7 @@
+ 		timekeeper.xtime.tv_sec++;
+ 		leap = second_overflow(timekeeper.xtime.tv_sec);
+ 		timekeeper.xtime.tv_sec += leap;
++		timekeeper.wall_to_monotonic.tv_sec -= leap;
+ 	}
+ 
+ 	/* Accumulate raw time */
+@@ -1079,6 +1080,7 @@
+ 		timekeeper.xtime.tv_sec++;
+ 		leap = second_overflow(timekeeper.xtime.tv_sec);
+ 		timekeeper.xtime.tv_sec += leap;
++		timekeeper.wall_to_monotonic.tv_sec -= leap;
+ 	}
+ 
+ 	timekeeping_update(false);

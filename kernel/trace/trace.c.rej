@@ -1,0 +1,19 @@
+--- kernel/trace/trace.c
++++ kernel/trace/trace.c
+@@ -383,7 +383,7 @@
+ void tracing_off(void)
+ {
+ 	if (global_trace.buffer)
+-		ring_buffer_record_on(global_trace.buffer);
++		ring_buffer_record_off(global_trace.buffer);
+ 	/*
+ 	 * This flag is only looked at when buffers haven't been
+ 	 * allocated yet. We don't really care about the race
+@@ -3565,6 +3567,7 @@
+ 		.pages		= pages_def,
+ 		.partial	= partial_def,
+ 		.nr_pages	= 0, /* This gets updated below. */
++		.nr_pages_max	= PIPE_DEF_BUFFERS,
+ 		.flags		= flags,
+ 		.ops		= &tracing_pipe_buf_ops,
+ 		.spd_release	= tracing_spd_release_pipe,

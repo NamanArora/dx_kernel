@@ -1,0 +1,18 @@
+--- kernel/time/ntp.c
++++ kernel/time/ntp.c
+@@ -412,6 +412,7 @@
+ 		if (secs % 86400 == 0) {
+ 			leap = -1;
+ 			time_state = TIME_OOP;
++			time_tai++;
+ 			printk(KERN_NOTICE
+ 				"Clock: inserting leap second 23:59:60 UTC\n");
+ 		}
+@@ -426,7 +427,6 @@
+ 		}
+ 		break;
+ 	case TIME_OOP:
+-		time_tai++;
+ 		time_state = TIME_WAIT;
+ 		break;
+ 
