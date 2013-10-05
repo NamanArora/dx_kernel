@@ -1552,7 +1552,7 @@ static inline int set_cpus_allowed_ptr(struct task_struct *p,
 }
 #endif
 
-<<<<<<< HEAD
+
 static inline void set_wake_up_idle(bool enabled)
 {
 	if (enabled)
