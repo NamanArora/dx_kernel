@@ -1819,9 +1819,8 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 #ifdef HIMAX_S2W
 		}
 #endif
-
-//		if (ret)
-//			enable_irq(client->irq);
+		if (ret)
+			enable_irq(client->irq);
 	}
 
 #ifdef HIMAX_S2W
