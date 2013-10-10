@@ -29,7 +29,8 @@
 #include <mach/board.h>
 #include <asm/atomic.h>
 #include <mach/board_htc.h>
-
+void himax_s2w_release(void);
+int himax_s2w_status(void);
 #ifdef CONFIG_TOUCHSCREEN_HIMAX_S2W
 #define HIMAX_S2W
 #endif
@@ -612,7 +613,7 @@ static ssize_t touch_vendor_show(struct device *dev,
 
 static DEVICE_ATTR(vendor, 0444, touch_vendor_show, NULL);
 
-static ssize_t touch_attn_show(struct device *dev,
+/*static ssize_t touch_attn_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
@@ -624,8 +625,8 @@ static ssize_t touch_attn_show(struct device *dev,
 
 	return ret;
 }
-
-static DEVICE_ATTR(attn, 0444, touch_attn_show, NULL);
+*/
+//static DEVICE_ATTR(attn, 0444, touch_attn_show, NULL);
 
 static ssize_t himax_debug_level_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1164,9 +1165,9 @@ static int himax_touch_sysfs_init(void)
 		printk(KERN_ERR "[TP][TOUCH_ERR]%s: sysfs_create_file failed\n", __func__);
 		return ret;
 	}
-	ret = sysfs_create_file(android_touch_kobj, &dev_attr_attn.attr);
+	ret = sysfs_create_file(android_touch_kobj, &dev_attr_s2wswitch.attr);
 	if (ret) {
-		printk(KERN_ERR "[TP][TOUCH_ERR]%s: sysfs_create_file failed\n", __func__);
+		printk(KERN_ERR "[TS]%s: sysfs_create_file s2wswitch failed\n", __func__);
 		return ret;
 	}
 #ifdef FAKE_EVENT
@@ -1193,7 +1194,7 @@ static void himax_touch_sysfs_deinit(void)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_vendor.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_htc_event.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_reset.attr);
-	sysfs_remove_file(android_touch_kobj, &dev_attr_attn.attr);
+	sysfs_remove_file(android_touch_kobj, &dev_attr_s2wswitch.attr);
 #ifdef FAKE_EVENT
 	sysfs_remove_file(android_touch_kobj, &dev_attr_fake_event.attr);
 #endif
@@ -1780,8 +1781,7 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 #endif
 		uint8_t new_command[2] = {0x91, 0x00};
 
-		i2c_himax_master_write(ts->client, new_command, sizeof(new_command));
-		 HIMAX_I2C_RETRY_TIMES);
+		i2c_himax_master_write(ts->client, new_command, sizeof(new_command), HIMAX_I2C_RETRY_TIMES);
 #ifdef HIMAX_S2W
 	}
 #endif
@@ -1846,7 +1846,6 @@ static int himax8526a_resume(struct i2c_client *client)
 	disable_irq_wake(client->irq);
 #endif
 
-	struct himax_ts_data *ts = i2c_get_clientdata(client);
 	printk(KERN_INFO "[TP]%s: enter\n", __func__);
 	if (ts->pdata->powerOff3V3 && ts->pdata->power)
 		ts->pdata->power(1);
