@@ -164,7 +164,7 @@ static int gpio_event_probe(struct platform_device *pdev)
 		input_dev->event = gpio_input_event;
 		ip->input_devs->dev[i] = input_dev;
 #ifdef CONFIG_TOUCHSCREEN_HIMAX_S2W
-		if (!strcmp(input_dev->name, "pico-keypad")) {
+		if (!strcmp(input_dev->name, "protou-keypad")) {
 			himax_s2w_setinp(input_dev);
 			printk(KERN_INFO "[sweep2wake]: set device %s\n", input_dev->name);
 		}
