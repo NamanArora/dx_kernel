@@ -468,7 +468,7 @@ static void protou_poweralg_config_init(struct poweralg_config_type *config)
 {
 	pr_info("[BATT] %s() is used\n",__func__);
 	config->full_charging_mv = 4250;
-	config->full_charging_ma = 50;
+	config->full_charging_ma = 100;
 	config->full_pending_ma = 0;		
 	config->full_charging_timeout_sec = 60 * 60;
 	config->voltage_recharge_mv = 4250;
