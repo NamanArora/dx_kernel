@@ -727,11 +727,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
 
 	return end_block;
 }
-	/*
-	 * Caller needs to validate requested block against end of device.
-	 */
-	return end_block;
-}
+
 
 /*
  * Create the page-cache page that contains the requested block.
