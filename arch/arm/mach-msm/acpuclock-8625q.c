@@ -40,7 +40,15 @@
 #include "smd_private.h"
 #include "acpuclock.h"
 #include "acpuclock-8625q.h"
-
+#define PLL_0_MHZ        0
+#define PLL_196_MHZ        10
+#define PLL_245_MHZ        12
+#define PLL_589_MHZ        30
+#define PLL_737_MHZ        38
+#define PLL_800_MHZ        41
+#define PLL_960_MHZ        50
+#define PLL_1008_MHZ        52
+#define PLL_1200_MHZ        62
 #define HTC_LOCK_CPU_700MHZ	1
 
 #define A11S_CLK_CNTL_ADDR	(MSM_CSR_BASE + 0x100)
@@ -134,10 +142,8 @@ static struct clkctl_acpu_speed acpu_freq_tbl_cmn[] = {
 	{ 0, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 0, 160000 },
 	{ 1, 700800, ACPU_PLL_4, 6, 0, 87500, 3, MAX_NOMINAL_VOLTAGE, 160000,
 						&pll4_cfg_tbl[0]},
-#if !HTC_LOCK_CPU_700MHZ
 	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, MAX_1GHZ_VOLTAGE, 200000,
 						&pll4_cfg_tbl[1]},
-#endif
 };
 
 static struct clkctl_acpu_speed acpu_freq_tbl_1209[] = {
@@ -225,13 +231,17 @@ static void acpuclk_config_pll4(struct pll_config *pll)
 
 static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 {
-	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel;
+	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel,a11_div;
 
 	reg_clksel = readl_relaxed(A11S_CLK_SEL_ADDR);
 
 	
 	clk_div = (reg_clksel >> 1) & 0x03;
-	
+	// Perform overclocking if requested
+ if (hunt_s->a11clk_khz > 1008000) {    // Change the speed of PLL4    
+writel(hunt_s->a11clk_khz/19200,PLL4_N_VAL_ADDR);
+   udelay(50);
+  }
 	src_sel = reg_clksel & 1;
 
 	if (hunt_s->ahbclk_div > clk_div) {
@@ -250,10 +260,10 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	
 	reg_clksel ^= 1;
 	writel_relaxed(reg_clksel, A11S_CLK_SEL_ADDR);
-
-	
-	mb();
-	udelay(50);
+if (hunt_s->a11clk_khz<=1008000) {
+   // Restore the speed of PLL4
+    writel(PLL_1008_MHZ, PLL4_N_VAL_ADDR);    udelay(50);
+  }
 
 	if (hunt_s->ahbclk_div < clk_div) {
 		reg_clksel &= ~(0x3 << 1);

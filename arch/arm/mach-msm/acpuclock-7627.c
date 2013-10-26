@@ -81,12 +81,12 @@ static struct acpu_clk_src pll_clk[ACPU_PLL_END] = {
 };
 
 static struct pll_config pll4_cfg_tbl[] = {
-	[0] = {  36, 1, 2 }, 
-	[1] = {  52, 1, 2 }, 
-	[2] = {  63, 0, 1 }, 
-	[3] = {  73, 0, 1 }, 
-	[4] = {  60, 0, 1 }, 
-	[5] = {  57, 1, 2 }, 
+        [0] = {  36, 1, 2 }, /*  700.8 MHz */
+        [1] = {  52, 1, 2 }, /* 1008 MHz */
+        [2] = {  54, 1, 2 }, /* 1198 MHz */
+        [3] = {  73, 0, 1 }, /* 1401.6 MHz */
+        [4] = {  60, 0, 1 }, /* 1152 MHz */
+        [5] = {  53, 1, 2 }, /* 1104 MHz */
 };
 
 struct clock_state {
@@ -287,19 +287,36 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1401[] = {
 	{ 1, 1401600, ACPU_PLL_4, 6, 0, 175000, 3, 7, 200000, &pll4_cfg_tbl[3]},
 	{ 0 }
 };
-
+//this one
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008_2p0[] = {
-	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
-	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1, 61440 },
-	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
-	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3, 61440 },
-	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 122880 },
-	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 122880 },
-	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
-	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 160000 },
-	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 160000 },
-	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
-	{ 0 }
+{ 0,   19200, ACPU_PLL_TCXO,  0,  0,   2400,   3,  0,  30720 },
+        { 0,   61440,    ACPU_PLL_1,  1,  3,   7680,   3,  1,  61440 },
+        { 1,  122880,    ACPU_PLL_1,  1,  1,  15360,   3,  2,  61440 },
+        { 1,  245760,    ACPU_PLL_1,  1,  0,  30720,   3,  3,  61440 },
+        { 0,  300000,    ACPU_PLL_2,  2,  3,  37500,   3,  4, 150000 },
+        { 1,  320000,    ACPU_PLL_0,  4,  2,  40000,   3,  4, 122880 },
+        { 1,  480000,    ACPU_PLL_0,  4,  1,  60000,   3,  5, 122880 },
+        { 0,  504000,    ACPU_PLL_4,  6,  1,  63000,   3,  6, 160000 },
+        { 1,  600000,    ACPU_PLL_2,  2,  1,  75000,   3,  6, 160000 },
+        { 1, 1008000,    ACPU_PLL_4,  6,  0, 126000,   3,  7, 200000 },
+        { 1, 1036800,    ACPU_PLL_4,  6,  0, 129600,   3,  7, 200000 },
+        { 1, 1056000,    ACPU_PLL_4,  6,  0, 132000,   3,  7, 200000 },
+        { 1, 1113600,    ACPU_PLL_4,  6,  0, 139200,   3,  7, 200000 },
+        { 1, 1152000,    ACPU_PLL_4,  6,  0, 144000,   3,  7, 200000 },
+        { 1, 1190400,    ACPU_PLL_4,  6,  0, 148800,   3,  7, 200000 },
+        { 1, 1228800,    ACPU_PLL_4,  6,  0, 153600,   3,  7, 200000 },
+        { 1, 1267200,    ACPU_PLL_4,  6,  0, 158400,   3,  7, 200000 },
+
+        // Users report that CPU is stable in between 1.2 and 1.3GHz
+        { 1, 1270000,    ACPU_PLL_4,  6,  0, 158750,   3,  7, 200000 },
+        { 1, 1280000,    ACPU_PLL_4,  6,  0, 160000,   3,  7, 200000 }, // PLL4 max of 66.7MHz
+        { 1, 1290000,    ACPU_PLL_4,  6,  0, 161250,   3,  7, 200000 },
+        { 1, 1300000,    ACPU_PLL_4,  6,  0, 162500,   3,  7, 200000 },
+        // Up to 1.3GHz is stable but... Let's go bananas!!
+        { 1, 1310720,    ACPU_PLL_4,  6,  0, 163840,   3,  7, 200000 },
+        { 0, 1324800,    ACPU_PLL_4,  6,  0, 165600,   3,  7, 200000 },
+	{ 1, 1401600,    ACPU_PLL_4, 6, 0, 175000, 3, 7, 200000},
+{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
 static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1008_2p0[] = {
@@ -461,27 +478,19 @@ struct pll_freq_tbl_map {
 };
 
 static struct pll_freq_tbl_map acpu_freq_tbl_list[] = {
-	PLL_CONFIG(960, 196, 1200, 0),
-	PLL_CONFIG(960, 245, 1200, 0),
-	PLL_CONFIG(960, 196, 800, 0),
-	PLL_CONFIG(960, 245, 800, 0),
-	PLL_CONFIG(960, 245, 1200, 800),
-	PLL_CONFIG(960, 196, 1200, 800),
-	PLL_CONFIG(960, 245, 1200, 1008),
-	PLL_CONFIG(960, 196, 1200, 1008),
-	PLL_CONFIG(960, 737, 1200, 800),
-	PLL_CONFIG(960, 589, 1200, 800),
-	PLL_CONFIG(960, 737, 1200, 1008),
-	PLL_CONFIG(960, 589, 1200, 1008),
-	PLL_CONFIG(960, 245, 1200, 1209),
-	PLL_CONFIG(960, 196, 1200, 1209),
-	PLL_CONFIG(960, 245, 1200, 1152),
-	PLL_CONFIG(960, 196, 1200, 1152),
-	PLL_CONFIG(960, 245, 1200, 1104),
-	PLL_CONFIG(960, 196, 1200, 1104),
-	PLL_CONFIG(960, 245, 1200, 1401),
-	PLL_CONFIG(960, 196, 1200, 1401),
-	{ 0, 0, 0, 0, 0 }
+        PLL_CONFIG(960, 196, 1200, 0),
+        PLL_CONFIG(960, 245, 1200, 0),
+        PLL_CONFIG(960, 196, 800, 0),
+        PLL_CONFIG(960, 245, 800, 0),
+        PLL_CONFIG(960, 245, 1200, 800),
+        PLL_CONFIG(960, 196, 1200, 800),
+        PLL_CONFIG(960, 245, 1200, 1008),
+        PLL_CONFIG(960, 196, 1200, 1008),
+        PLL_CONFIG(960, 737, 1200, 800),
+        PLL_CONFIG(960, 589, 1200, 800),
+        PLL_CONFIG(960, 737, 1200, 1008),
+        PLL_CONFIG(960, 589, 1200, 1008),
+        { 0, 0, 0, 0, 0 }
 };
 
 #ifdef CONFIG_CPU_FREQ_MSM
@@ -537,7 +546,15 @@ static void acpuclk_config_pll4(struct pll_config *pll)
 	
 	mb();
 }
-
+#define PLL_0_MHZ        0
+#define PLL_196_MHZ        10
+#define PLL_245_MHZ        12
+#define PLL_589_MHZ        30
+#define PLL_737_MHZ        38
+#define PLL_800_MHZ        41
+#define PLL_960_MHZ        50
+#define PLL_1008_MHZ        52
+#define PLL_1200_MHZ        62
 static int acpuclk_set_vdd_level(int vdd)
 {
 	uint32_t current_vdd;
@@ -566,13 +583,19 @@ static int acpuclk_set_vdd_level(int vdd)
 
 static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 {
-	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel;
+	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel,a11_div;
 
 	reg_clksel = readl_relaxed(A11S_CLK_SEL_ADDR);
 
 	
 	clk_div = (reg_clksel >> 1) & 0x03;
-	
+
+ if (hunt_s->a11clk_khz > 1008000) {
+   writel(hunt_s->a11clk_khz/19200,PLL4_N_VAL_ADDR);
+   udelay(50);
+  }
+
+
 	src_sel = reg_clksel & 1;
 
 	if (hunt_s->ahbclk_div > clk_div) {
@@ -592,10 +615,12 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	reg_clksel ^= 1;
 	writel_relaxed(reg_clksel, A11S_CLK_SEL_ADDR);
 
-	
-	mb();
-	udelay(50);
 
+ if (hunt_s->a11clk_khz<=1008000) {
+
+writel(PLL_1008_MHZ, PLL4_N_VAL_ADDR);
+   udelay(50);
+  }
 	if (hunt_s->ahbclk_div < clk_div) {
 		reg_clksel &= ~(0x3 << 1);
 		reg_clksel |= (hunt_s->ahbclk_div << 1);
