@@ -728,6 +728,7 @@ static void msm_otg_notify_charger_attached(int connect_type)
 		}
 		break;
 	case CONNECT_TYPE_USB:
+		printk("USB connected");
 		if (atomic_read(&motg->chg_type) != USB_CHG_TYPE__SDP)
 			atomic_set(&motg->chg_type, USB_CHG_TYPE__SDP);
 		motg->ac_detect_count = 0;
@@ -741,6 +742,7 @@ static void msm_otg_notify_charger_attached(int connect_type)
 		}
 		break;
 	case CONNECT_TYPE_AC:
+		printk("AC connected");
 		if (atomic_read(&motg->chg_type) != USB_CHG_TYPE__WALLCHARGER)
 			atomic_set(&motg->chg_type, USB_CHG_TYPE__WALLCHARGER);
 		motg->connect_type = CONNECT_TYPE_AC;
