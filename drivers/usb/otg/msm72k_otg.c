@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#include<linux/fastchg.h>
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -728,6 +728,7 @@ static void msm_otg_notify_charger_attached(int connect_type)
 		}
 		break;
 	case CONNECT_TYPE_USB:
+if(!force_fast_charge){
 		printk("USB connected");
 		if (atomic_read(&motg->chg_type) != USB_CHG_TYPE__SDP)
 			atomic_set(&motg->chg_type, USB_CHG_TYPE__SDP);
@@ -739,7 +740,14 @@ static void msm_otg_notify_charger_attached(int connect_type)
 		} else {
 			
 			return;
-		}
+		}}
+else if (force_fast_charge)
+{
+	printk("AC connected");
+		if (atomic_read(&motg->chg_type) != USB_CHG_TYPE__WALLCHARGER)
+			atomic_set(&motg->chg_type, USB_CHG_TYPE__WALLCHARGER);
+		motg->connect_type = CONNECT_TYPE_AC;
+}
 		break;
 	case CONNECT_TYPE_AC:
 		printk("AC connected");
