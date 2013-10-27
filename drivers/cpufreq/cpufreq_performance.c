@@ -14,7 +14,7 @@
 #include <linux/module.h>
 #include <linux/cpufreq.h>
 #include <linux/init.h>
-
+#include <linux/variables.h>
 
 static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 					unsigned int event)
