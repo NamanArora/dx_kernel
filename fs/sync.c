@@ -69,7 +69,7 @@ static void sync_one_sb(struct super_block *sb, void *arg)
 	if (!(sb->s_flags & MS_RDONLY))
 		__sync_filesystem(sb, *(int *)arg);
 }
-static void sync_filesystems(int wait)
+void sync_filesystems(int wait)
 {
 	iterate_supers(sync_one_sb, &wait);
 }
