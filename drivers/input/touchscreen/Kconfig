@@ -945,11 +945,12 @@ config TOUCHSCREEN_FT5X06
          Say Y here if you have a ft5X06 touchscreen.
 	 Ft5x06 controllers are multi touch controllers which can
 	 report 5 touches at a time.
-
          If unsure, say N.
 
-         To compile this driver as a module, choose M here: the
-         module will be called ft5x06_ts.
+config TOUCHSCREEN_HIMAX_S2W
+	bool "Himax 8526A Sweep2Wake"
+	depends on TOUCHSCREEN_HIMAX
+	default n
 
 config TOUCHSCREEN_SYNAPTICS_3K
 	tristate "Synaptics 3k serious i2c touchscreen"
