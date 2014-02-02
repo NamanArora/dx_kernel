@@ -1982,7 +1982,7 @@ struct himax_i2c_platform_data msm8625_ts_himax_data = {
 	.gpio_reset = PROTOU_GPIO_TP_RST_N,
 	.version = 0x00,
 	.tw_id = 0,
-	.event_htc_enable = 0,
+	
 	.cable_config = { 0x90, 0x00},
 	.power = msm8625_ts_himax_power,
 	.powerOff3V3 = 0,
