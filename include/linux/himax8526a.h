@@ -201,9 +201,11 @@ struct himax_i2c_platform_data {
 	struct kobject *vk_obj;
 	struct kobj_attribute *vk2Use;
 	uint8_t slave_addr;
+	uint32_t event_htc_enable;
 	uint8_t cable_config[2];
 
 	
+	uint8_t support_htc_event;
 	
 
 	
