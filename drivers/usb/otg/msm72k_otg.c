@@ -751,6 +751,8 @@ else if (force_fast_charge==1)
 	printk("AC connected");
 		if (atomic_read(&motg->chg_type) != USB_CHG_TYPE__WALLCHARGER)
 			atomic_set(&motg->chg_type, USB_CHG_TYPE__WALLCHARGER);
+		motg->ac_detect_count = 0;
+		del_timer(&motg->ac_detect_timer);
 		motg->connect_type = CONNECT_TYPE_AC;
 }
 		break;
