@@ -29,7 +29,7 @@
 #include <mach/board.h>
 #include <asm/atomic.h>
 #include <mach/board_htc.h>
-
+static DEFINE_MUTEX(s2w_lock);
 void himax_s2w_release(void);
 int himax_s2w_status(void);
 
@@ -1103,10 +1103,16 @@ void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 	msleep(100);
 	printk(KERN_INFO "[TS][S2W]%s: Turn it on", __func__);
+	mutex_unlock(&s2w_lock);
 	himax_s2w_release();
 }
 static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
 
+void sweep2wake_pwrtrigger(void)
+ {
+ 	if (mutex_trylock(&s2w_lock)) 
+ 		schedule_work(&himax_s2w_power_work);
+ }
 void himax_s2w_func(int x) {
 	//printk(KERN_INFO "[TS][S2W]%s: %d", __func__, x);
 	if (!himax_s2w_status()) {
@@ -1115,10 +1121,10 @@ void himax_s2w_func(int x) {
 	} else {
 		if (x < private_ts->s2w_x_pos) {
 			if ((private_ts->s2w_x_pos - x) > 650)
-				himax_s2w_power(&himax_s2w_power_work);
+				sweep2wake_pwrtrigger();
 		} else {
 			if ((x - private_ts->s2w_x_pos) > 650)
-				himax_s2w_power(&himax_s2w_power_work);
+				sweep2wake_pwrtrigger();
 		}
 	}
 }
@@ -1853,8 +1859,9 @@ static int himax8526a_resume(struct i2c_client *client)
 	uint8_t new_command[2] = {0x91, 0x00};
 
 #ifdef HIMAX_S2W
-	if (s2w_switch)
-	disable_irq_wake(client->irq);
+	if (s2w_switch > 0){
+	msleep(250);
+	disable_irq_wake(client->irq);}
 #endif
 	printk(KERN_INFO "[TP]%s: enter\n", __func__);
 	if (ts->pdata->powerOff3V3 && ts->pdata->power)

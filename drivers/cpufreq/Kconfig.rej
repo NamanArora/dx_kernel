@@ -1,0 +1,17 @@
+--- drivers/cpufreq/Kconfig
++++ drivers/cpufreq/Kconfig
+@@ -225,11 +225,11 @@
+ 
+ 	  If in doubt, say N.
+ 
+-config CPU_FREQ_GOV_SMARTASS2
+-	tristate "'smartassV2' cpufreq governor"
++config CPU_FREQ_GOV_SMARTASSH3
++	tristate "'smartassH3' cpufreq governor"
+ 	depends on CPU_FREQ
+ 	help
+-	  'smartassV2' - a "smart" optimized governor for the hero!
++	  'smartassH3' - a "smartassV2 with tweaks by H3ROS" governor!
+ 
+ 	  If in doubt, say N.
+ 
