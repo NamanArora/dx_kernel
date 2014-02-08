@@ -1178,11 +1178,13 @@ static int himax_touch_sysfs_init(void)
 //		printk(KERN_ERR "[TP][TOUCH_ERR]%s: sysfs_create_file failed\n", __func__);
 		return ret;
 	}
+#ifdef CONFIG_TOUCHSCREEN_HIMAX_S2W
 	ret = sysfs_create_file(android_touch_kobj, &dev_attr_s2wswitch.attr);
 	if (ret) {
 		printk(KERN_ERR "[TS]%s: sysfs_create_file s2wswitch failed\n", __func__);
 		return ret;
 	}
+#endif
 #ifdef FAKE_EVENT
 	ret = sysfs_create_file(android_touch_kobj, &dev_attr_fake_event.attr);
 	if (ret) {
@@ -1208,7 +1210,9 @@ static void himax_touch_sysfs_deinit(void)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_htc_event.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_reset.attr);
 //	sysfs_remove_file(android_touch_kobj, &dev_attr_attn.attr);
+#ifdef CONFIG_TOUCHSCREEN_HIMAX_S2W
 	sysfs_remove_file(android_touch_kobj, &dev_attr_s2wswitch.attr);
+#endif
 #ifdef FAKE_EVENT
 	sysfs_remove_file(android_touch_kobj, &dev_attr_fake_event.attr);
 #endif
