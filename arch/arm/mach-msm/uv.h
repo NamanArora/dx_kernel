@@ -1,0 +1,2 @@
+extern signed int readval;
+
