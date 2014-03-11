@@ -541,21 +541,46 @@ static void acpuclk_config_pll4(struct pll_config *pll)
 
 static int acpuclk_set_vdd_level(int vdd)
 {
-	uint32_t current_vdd;
+	uint32_t current_vdd,address,voltage;
 
 	if ((cpu_is_msm7x27a() || cpu_is_msm7x25a()) &&
 		(SOCINFO_VERSION_MINOR(socinfo_get_version()) < 1))
 		return 0;
 
-	current_vdd = readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR) & 0x07;
+	address= readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR); //value varies from 27,45,63,54
 
-	pr_debug("Switching VDD from %u mV -> %d mV\n",
+/*
+
+	current_vdd  Address   
+
+	7		63    
+	6		54
+	5		45
+	3		27
+
+	tgt_vdd     	Voltage
+	
+	7		184
+	6		176
+	5		168
+	4		162
+	3		152
+*/
+
+	current_vdd = address & 0x07;
+
+	printk(KERN_INFO "Switching VDD from %u mV -> %d mV\n",
 	       current_vdd, vdd);
 
-	writel_relaxed((1 << 7) | (vdd << 3), A11S_VDD_SVS_PLEVEL_ADDR);
+	voltage= (1 << 7) | (vdd << 3);
+
+	printk(KERN_INFO "Switching address %u and voltage %d mV\n",
+	       address, voltage);
+
+	writel_relaxed(voltage , A11S_VDD_SVS_PLEVEL_ADDR);
 	mb();
 	udelay(62);
-	if ((readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR) & 0x7) != vdd) {
+	if (current_vdd != vdd) {
 		pr_err("VDD set failed\n");
 		return -EIO;
 	}
