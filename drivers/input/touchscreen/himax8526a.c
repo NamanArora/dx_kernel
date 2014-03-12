@@ -1324,7 +1324,7 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION,
 						((finger_num ==  0) ? BIT(31) : 0) | x << 16 | y);
 				}
-//30
+//30 code is entering here
 				if ((ts->debug_log_level & BIT(3)) > 0) {
 					printk(KERN_INFO "[touch]code entering 30");
 					if ((((old_finger >> loop_i) ^ (finger_pressed >> loop_i)) & 1) == 1) {
@@ -1341,7 +1341,7 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 
 				if (ts->protocol_type == PROTOCOL_TYPE_B)
 					input_mt_slot(ts->input_dev, loop_i);
-
+//31 code entering here too
 				if (ts->event_htc_enable_type != SWITCH_TO_HTC_EVENT_ONLY) {
 					printk(KERN_INFO "[touch]code entering 31");
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, w);
