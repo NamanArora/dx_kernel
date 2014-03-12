@@ -110,7 +110,7 @@ int i2c_himax_read(struct i2c_client *client, uint8_t command, uint8_t *data, ui
 		msleep(10);
 	}
 	if (retry == toRetry) {
-		printk(KERN_INFO "[TP]%s: i2c_read_block retry over %d\n",
+		printk(KERN_INFO "[touch][TP]%s: i2c_read_block retry over %d\n",
 			__func__, toRetry);
 		return -EIO;
 	}
@@ -144,7 +144,7 @@ int i2c_himax_write(struct i2c_client *client, uint8_t command, uint8_t *data, u
 	}
 
 	if (retry == toRetry) {
-		printk(KERN_INFO "[TP]%s: i2c_write_block retry over %d\n",
+		printk(KERN_INFO "[touch][TP]%s: i2c_write_block retry over %d\n",
 			__func__, toRetry);
 		return -EIO;
 	}
@@ -181,7 +181,7 @@ int i2c_himax_master_write(struct i2c_client *client, uint8_t *data, uint8_t len
 	}
 
 	if (retry == toRetry) {
-		printk(KERN_INFO "[TP]%s: i2c_write_block retry over %d\n",
+		printk(KERN_INFO "[touch][TP]%s: i2c_write_block retry over %d\n",
 		       __func__, toRetry);
 		return -EIO;
 	}
@@ -206,7 +206,7 @@ int i2c_himax_read_command(struct i2c_client *client, uint8_t length, uint8_t *d
 		msleep(10);
 	}
 	if (retry == toRetry) {
-		printk(KERN_INFO "[TP]%s: i2c_read_block retry over %d\n",
+		printk(KERN_INFO "[touch][TP]%s: i2c_read_block retry over %d\n",
 		       __func__, toRetry);
 		return -EIO;
 	}
@@ -272,7 +272,7 @@ start:
 	result = i2c_himax_master_write(client, cmd , 2, firstRetry);
 
 	if (result < 0) {
-		printk(KERN_INFO "[TP]No Himax chip inside\n");
+		printk(KERN_INFO "[touch][TP]No Himax chip inside\n");
 		return -EIO;
 	} else {
 		
@@ -310,7 +310,7 @@ start:
 		msleep(20);
 		i2c_himax_read(client, 0xF5, &tw_id, 1, normalRetry);
 		i2c_himax_read(client, 0x32, &fw_ver, 1, normalRetry);
-		printk(KERN_INFO "[TP]%s: get tw_id:%X, fw_ver:%X\n", __func__, tw_id, fw_ver);
+		printk(KERN_INFO "[touch][TP]%s: get tw_id:%X, fw_ver:%X\n", __func__, tw_id, fw_ver);
 		if (fw_ver == 0) {
 			fw_ver_info_retry++;
 			if (pdata->reset)
@@ -325,7 +325,7 @@ start:
 			for (i = 0; i < pdata->type3_size/sizeof(struct himax_i2c_platform_data_config_type_3); ++i) {
 				if (fw_ver >= (pdata->type3)[i].version) {
 					if ((pdata->type3)[i].common) {
-						printk(KERN_INFO "[TP] common configuration detected.\n");
+						printk(KERN_INFO "[touch][TP] common configuration detected.\n");
 						type3_selected = &((pdata->type3)[i]);
 						pdata->version = (pdata->type3)[i].c23[1];
 						pdata->tw_id = tw_id;
@@ -335,7 +335,7 @@ start:
 						pdata->regCD = (pdata->type3)[i].c50;
 						if (*((pdata->type3[i]).checksum))
 							type3_checksum = (pdata->type3)[i].checksum;
-						printk(KERN_INFO "[TP]type3 selected, %X, %X\n", (uint32_t)type3_selected, (uint32_t)type3_checksum);
+						printk(KERN_INFO "[touch][TP]type3 selected, %X, %X\n", (uint32_t)type3_selected, (uint32_t)type3_checksum);
 					} else if (tw_id == (pdata->type3)[i].tw_id) {
 						type3_selected = &((pdata->type3)[i]);
 						pdata->version = (pdata->type3)[i].c23[1];
@@ -346,7 +346,7 @@ start:
 						pdata->regCD = (pdata->type3)[i].c50;
 						if (*((pdata->type3[i]).checksum))
 							type3_checksum = (pdata->type3)[i].checksum;
-						printk(KERN_INFO "[TP]type3 selected, %X, %X\n", (uint32_t)type3_selected, (uint32_t)type3_checksum);
+						printk(KERN_INFO "[touch][TP]type3 selected, %X, %X\n", (uint32_t)type3_selected, (uint32_t)type3_checksum);
 					}
 				}
 			}
@@ -363,7 +363,7 @@ start:
 					pdata->abs_pressure_fuzz = (pdata->type2)[i].z_fuzz;
 					if (*((pdata->type2[i]).checksum))
 						type2_checksum = (pdata->type2[i]).checksum;
-					printk(KERN_INFO "[TP]type2 selected, %X, %X\n", (uint32_t)type2_selected, (uint32_t)type2_checksum);
+					printk(KERN_INFO "[touch][TP]type2 selected, %X, %X\n", (uint32_t)type2_selected, (uint32_t)type2_checksum);
 				}
 			}
 		}
@@ -379,22 +379,22 @@ start:
 					pdata->abs_pressure_fuzz = (pdata->type1)[i].z_fuzz;
 					if (*((pdata->type1[i]).checksum))
 						type1_checksum = (pdata->type1[i]).checksum;
-					printk(KERN_INFO "[TP]type1 selected, %X, %X\n", (uint32_t)type1_selected, (uint32_t)type1_checksum);
+					printk(KERN_INFO "[touch][TP]type1 selected, %X, %X\n", (uint32_t)type1_selected, (uint32_t)type1_checksum);
 				}
 			}
 		}
 		switch (tw_id & 0x03) {
 		case 0x00:
-			printk(KERN_INFO "[TP]%s: %s touch window detected.\n", __func__, pdata->ID0);
+			printk(KERN_INFO "[touch][TP]%s: %s touch window detected.\n", __func__, pdata->ID0);
 			break;
 		case 0x01:
-			printk(KERN_INFO "[TP]%s: %s touch window detected.\n", __func__, pdata->ID1);
+			printk(KERN_INFO "[touch][TP]%s: %s touch window detected.\n", __func__, pdata->ID1);
 			break;
 		case 0x02:
-			printk(KERN_INFO "[TP]%s: %s touch window detected.\n", __func__, pdata->ID2);
+			printk(KERN_INFO "[touch][TP]%s: %s touch window detected.\n", __func__, pdata->ID2);
 			break;
 		case 0x03:
-			printk(KERN_INFO "[TP]%s: %s touch window detected.\n", __func__, pdata->ID3);
+			printk(KERN_INFO "[touch][TP]%s: %s touch window detected.\n", __func__, pdata->ID3);
 			break;
 		}
 		if (!type1_selected && !type2_selected && !type3_selected) {
@@ -402,7 +402,7 @@ start:
 			return -1;
 		}
 
-		printk(KERN_INFO "[TP]%s: start initializing Sensor configs\n", __func__);
+		printk(KERN_INFO "[touch][TP]%s: start initializing Sensor configs\n", __func__);
 	}
 
 	do {
@@ -467,7 +467,7 @@ start:
 			CC(type1_selected->c41); CC(type1_selected->c42); CC(type1_selected->c43); CC(type1_selected->c44);
 		}
 		myCheckSum += 0xAB + 0x10;
-		printk(KERN_INFO "[TP]myCheckSum: 0x%X, 0x%X\n", myCheckSum%0x100, (myCheckSum%0x10000)/0x100);
+		printk(KERN_INFO "[touch][TP]myCheckSum: 0x%X, 0x%X\n", myCheckSum%0x100, (myCheckSum%0x10000)/0x100);
 
 		if (type1_checksum || type2_checksum || type3_checksum) {
 		
@@ -476,13 +476,13 @@ start:
 
 			
 			if (type1_checksum) {
-				printk(KERN_INFO "[TP]Check type 1 checksum, 0x%X, 0x%X.\n", type1_selected->checksum[1], type1_selected->checksum[2]);
+				printk(KERN_INFO "[touch][TP]Check type 1 checksum, 0x%X, 0x%X.\n", type1_selected->checksum[1], type1_selected->checksum[2]);
 				i2c_himax_master_write(client, type1_selected->checksum, sizeof(type1_selected->checksum), normalRetry);
 			} else if (type2_checksum) {
-				printk(KERN_INFO "[TP]Check type 2 checksum, 0x%X, 0x%X.\n", type2_selected->checksum[1], type2_selected->checksum[2]);
+				printk(KERN_INFO "[touch][TP]Check type 2 checksum, 0x%X, 0x%X.\n", type2_selected->checksum[1], type2_selected->checksum[2]);
 				i2c_himax_master_write(client, type2_selected->checksum, sizeof(type2_selected->checksum), normalRetry);
 			} else if (type3_checksum) {
-				printk(KERN_INFO "[TP]Check type 3 checksum, 0x%X, 0x%X.\n", type3_selected->checksum[1], type3_selected->checksum[2]);
+				printk(KERN_INFO "[touch][TP]Check type 3 checksum, 0x%X, 0x%X.\n", type3_selected->checksum[1], type3_selected->checksum[2]);
 				i2c_himax_master_write(client, type3_selected->checksum, sizeof(type3_selected->checksum), normalRetry);
 			}
 
@@ -514,7 +514,7 @@ static ssize_t himax_register_show(struct device *dev,
 	uint8_t data[96] = { 0 }, loop_i;
 	struct himax_ts_data *ts_data;
 	ts_data = private_ts;
-	printk(KERN_INFO "[TP]%x\n", himax_command);
+	printk(KERN_INFO "[touch][TP]%x\n", himax_command);
 	if (i2c_himax_read(ts_data->client, himax_command, data, 96,
 		 HIMAX_I2C_RETRY_TIMES) < 0) {
 		printk(KERN_WARNING "%s: read fail\n", __func__);
@@ -556,12 +556,12 @@ static ssize_t himax_register_store(struct device *dev,
 					if (buf[0] == 'w')
 						i2c_himax_write(ts_data->client, himax_command,
 							&write_da[0], length, HIMAX_I2C_RETRY_TIMES);
-					printk(KERN_INFO "CMD: %x, %x, %d\n", himax_command,
+					printk(KERN_INFO "[touch]CMD: %x, %x, %d\n", himax_command,
 						write_da[0], length);
 					for (veriLen = 0; veriLen < length; veriLen++)
-						printk(KERN_INFO "%x ", *((&write_da[0])+veriLen));
+						printk(KERN_INFO "[touch]%x ", *((&write_da[0])+veriLen));
 
-					printk(KERN_INFO "\n");
+					printk(KERN_INFO "[touch]\n");
 					return count;
 				}
 				if (buf[base + 1] == 'x') {
@@ -650,7 +650,7 @@ static ssize_t himax_debug_level_dump(struct device *dev,
 				ts->useScreenRes = 0;
 			}
 		} else
-			printk(KERN_INFO "[TP] Enable finger debug with raw position mode!\n");
+			printk(KERN_INFO "[touch][TP] Enable finger debug with raw position mode!\n");
 	} else {
 		ts->useScreenRes = 0;
 		ts->widthFactor = 0;
@@ -779,7 +779,7 @@ static ssize_t himax_reset_set(struct device *dev,
 			ret = cancel_work_sync(&ts_data->work);
 		}
 
-		printk(KERN_INFO "[TP]%s: Now reset the Touch chip.\n", __func__);
+		printk(KERN_INFO "[touch][TP]%s: Now reset the Touch chip.\n", __func__);
 
 		ts_data->pdata->reset();
 
@@ -851,7 +851,7 @@ static enum hrtimer_restart himax_ts_timer_fake_event_func(struct hrtimer *timer
 		}
 		input_sync(ts->input_dev);
 		i = 0;
-		printk(KERN_INFO "[TP]End of fake event\n");
+		printk(KERN_INFO "[touch][TP]End of fake event\n");
 	}
 
 	return HRTIMER_NORESTART;
@@ -868,7 +868,7 @@ static ssize_t himax_fake_event_show(struct device *dev,
 	if (!i) {
 		hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		ts->timer.function = himax_ts_timer_fake_event_func;
-		printk(KERN_INFO "hrtimer_init\n");
+		printk(KERN_INFO "[touch]hrtimer_init\n");
 		i++;
 	}
 	count += sprintf(buf + count, "%d,%d,%d,%d,%d,%d,%lu\n",
@@ -908,7 +908,7 @@ static ssize_t himax_fake_event_store(struct device *dev,
 			if (i - j <= 5)
 				memcpy(buf_tmp, buf + j, i - j);
 			else {
-				printk(KERN_INFO "buffer size is over 5 char\n");
+				printk(KERN_INFO "[touch]buffer size is over 5 char\n");
 				return count;
 			}
 			j = i + 1;
@@ -999,7 +999,7 @@ static int register_sr_touch_device(void)
 	ts->sr_input_dev->mtsize = HIMAX8526A_FINGER_SUPPORT_NUM;
 	input_set_abs_params(ts->sr_input_dev, ABS_MT_TRACKING_ID,
 		0, 3, 0, 0);
-	printk(KERN_INFO "[TP][SR]input_set_abs_params: mix_x %d, max_x %d,"
+	printk(KERN_INFO "[touch][TP][SR]input_set_abs_params: mix_x %d, max_x %d,"
 		" min_y %d, max_y %d\n", ts->pdata->abs_x_min,
 		 ts->pdata->abs_x_max, ts->pdata->abs_y_min, ts->pdata->abs_y_max);
 
@@ -1030,9 +1030,9 @@ static ssize_t himax_set_en_sr(struct device *dev, struct device_attribute *attr
 	ts_data = private_ts;
 	if (buf[0]) {
 		if (ts_data->sr_input_dev)
-			printk(KERN_INFO "[TP]%s: SR device already exist!\n", __func__);
+			printk(KERN_INFO "[touch][TP]%s: SR device already exist!\n", __func__);
 		else
-			printk(KERN_INFO "[TP]%s: SR touch device enable result:%X\n", __func__, register_sr_touch_device());
+			printk(KERN_INFO "[touch][TP]%s: SR touch device enable result:%X\n", __func__, register_sr_touch_device());
 	}
 	return count;
 }
@@ -1118,11 +1118,41 @@ static void himax_touch_sysfs_deinit(void)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_sr_en.attr);
 	kobject_del(android_touch_kobj);
 }
+//s2w related functions
+static struct input_dev * sweep2wake_pwrdev;
+extern void himax_s2w_setinp(struct input_dev *dev) {
+	sweep2wake_pwrdev = dev;
+}
+EXPORT_SYMBOL(himax_s2w_setinp);
+
+static DEFINE_MUTEX(s2w_lock);
+
+void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
+	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+	msleep(100);
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
+	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+	msleep(100);
+	printk(KERN_INFO "[touch][TS][S2W]%s: Turn it on", __func__);
+	mutex_unlock(&s2w_lock);
+	//himax_s2w_release();
+}
+static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
+
+void s2wfunc(void)
+ {
+
+ 	if (mutex_trylock(&s2w_lock)) 
+ 		schedule_work(&himax_s2w_power_work);
+				      
+ }
 
 inline void himax_ts_work(struct himax_ts_data *ts)
 {
 	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
 	uint8_t finger_on = 0;
+static int counter=0,scr=1;
 #ifdef ESD_WORKAROUND
 	uint32_t checksum;
 #endif
@@ -1140,18 +1170,18 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 		checksum += buf[22] + buf[23];
 
 		if (checksum == 0) {
-			printk(KERN_INFO "[TP]%s: Checksum = 0 detected, first_pressed = %d\n", __func__, ts->first_pressed);
+			printk(KERN_INFO "[touch][TP]%s: Checksum = 0 detected, first_pressed = %d\n", __func__, ts->first_pressed);
 			if (i2c_himax_read(ts->client, 0x84, hw_reset_check, 2, HIMAX_I2C_RETRY_TIMES)) {
 				printk(KERN_ERR "[TP][TOUCH_ERR]%s: can't read data from chip!\n", __func__);
 				goto err_workqueue_out;
 			}
-			printk(KERN_INFO "[TP]%s: Register_0x84_Status=%x\n", __func__, hw_reset_check[1]);
+			printk(KERN_INFO "[touch][TP]%s: Register_0x84_Status=%x\n", __func__, hw_reset_check[1]);
 			if ((hw_reset_check[1] == 0x03 && ts->first_pressed > 0) || (hw_reset_check[1] == 0x03 && ts->just_resume == 0x00))
 				goto workqueue_out;
 			else {
 				msleep(20);
 				ts->pdata->reset();
-				printk(KERN_INFO "[TP]%s: ESD reset detected, load sensor config.\n", __func__);
+				printk(KERN_INFO "[touch][TP]%s: ESD reset detected, load sensor config.\n", __func__);
 				if (ts->pdata->loadSensorConfig)
 					ts->pdata->loadSensorConfig(ts->client, ts->pdata, &(ts->i2c_api));
 				else
@@ -1167,7 +1197,7 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 			if (!((checksum%0x10000)/0x100 == buf[22] &&
 			(checksum%0x100) == buf[23]) && buf[20] != 0xFF &&
 			buf[21] != 0xFF) {
-				printk(KERN_INFO "[TP]%s: packet checksum failed, "
+				printk(KERN_INFO "[touch][TP]%s: packet checksum failed, "
 				"data not correct and not leave event!"
 				"Ignore.\n", __func__);
 				goto workqueue_out;
@@ -1175,11 +1205,11 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 	}
 
 	if (ts->debug_log_level & 0x1) {
-		printk(KERN_INFO "[TP]%s: raw data:\n", __func__);
+		printk(KERN_INFO "[touch][TP]%s: raw data:\n", __func__);
 		for (loop_i = 0; loop_i < 24; loop_i++) {
-			printk(KERN_INFO "0x%2.2X ", buf[loop_i]);
+			printk(KERN_INFO "[touch]0x%2.2X ", buf[loop_i]);
 			if (loop_i % 8 == 7)
-				printk(KERN_INFO "\n");
+				printk(KERN_INFO "[touch]\n");
 		}
 	}
 
@@ -1238,11 +1268,11 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 			for (loop_i = 0; loop_i < HIMAX8526A_FINGER_SUPPORT_NUM && (ts->debug_log_level & BIT(3)) > 0; loop_i++) {
 				if (((ts->pre_finger_mask >> loop_i) & 1) == 1) {
 					if (ts->useScreenRes) {
-						printk(KERN_INFO "[TP] status:%X, Screen:F:%02d Up, X:%d, Y:%d\n",
+						printk(KERN_INFO "[touch][TP] status:%X, Screen:F:%02d Up, X:%d, Y:%d\n",
 						 0, loop_i+1, ts->pre_finger_data[loop_i][0] * ts->widthFactor >> SHIFTBITS,
 						 ts->pre_finger_data[loop_i][1] * ts->heightFactor >> SHIFTBITS);
 					} else {
-						printk(KERN_INFO "[TP] status:%X, Raw:F:%02d Up, X:%d, Y:%d\n",
+						printk(KERN_INFO "[touch][TP] status:%X, Raw:F:%02d Up, X:%d, Y:%d\n",
 						 0, loop_i+1, ts->pre_finger_data[loop_i][0],
 						 ts->pre_finger_data[loop_i][1]);
 					}
@@ -1253,17 +1283,21 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 
 		if (ts->first_pressed == 1) {
 			ts->first_pressed = 2;
-			printk(KERN_INFO "[TP]E1@%d, %d\n",
+			printk(KERN_INFO "[touch][TP]E1@%d, %d\n",
 				ts->pre_finger_data[0][0] , ts->pre_finger_data[0][1]);
 		}
 
 		if (ts->debug_log_level & 0x2)
-			printk(KERN_INFO "[TP]All Finger leave\n");
+			printk(KERN_INFO "[touch][TP]All Finger leave\n");
 	} else {
 		int8_t old_finger = ts->pre_finger_mask;
 		finger_num = buf[20] & 0x0F;
 		finger_pressed = buf[21];
 		finger_on = 1;
+
+printk(KERN_INFO "[touch]finger num= %d", finger_num);
+printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
+
 		for (loop_i = 0; loop_i < 4; loop_i++) {
 			if (((finger_pressed >> loop_i) & 1) == 1) {
 				int base = loop_i * 4;
@@ -1271,20 +1305,35 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 				int y = (buf[base + 2] << 8 | buf[base + 3]);
 				int w = buf[16 + loop_i];
 				finger_num--;
-
+					
+					if(x>=100 && x<=1000 && y>=1000)
+					{//we are in the button area
+					 printk(KERN_INFO "[touch]s2w area current x %d", x);
+					 printk(KERN_INFO "[touch]s2w area current y %d", y);	
+					 if(x==(buf[0]<<8| buf[1]))	//so that finger doesnt move			 
+					 counter+=x;
+					 printk(KERN_INFO "[touch]current counter value %d", counter);
+					 if(counter >=16000 && scr){counter=0;
+					 s2wfunc(); scr=0;}
+					}else{counter=0; scr=1;}
+					
+//29
 				if (ts->event_htc_enable_type) {
+					printk(KERN_INFO "[touch]code entering 29");
 					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, w << 16 | w);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION,
 						((finger_num ==  0) ? BIT(31) : 0) | x << 16 | y);
 				}
+//30
 				if ((ts->debug_log_level & BIT(3)) > 0) {
+					printk(KERN_INFO "[touch]code entering 30");
 					if ((((old_finger >> loop_i) ^ (finger_pressed >> loop_i)) & 1) == 1) {
 						if (ts->useScreenRes) {
-							printk(KERN_INFO "[TP] status:%X, Screen:F:%02d Down, X:%d, Y:%d, W:%d\n",
+							printk(KERN_INFO "[touch][TP] status:%X, Screen:F:%02d Down, X:%d, Y:%d, W:%d\n",
 							 finger_pressed, loop_i+1, x * ts->widthFactor >> SHIFTBITS,
 							 y * ts->heightFactor >> SHIFTBITS, w);
 						} else {
-							printk(KERN_INFO "[TP] status:%X, Raw:F:%02d Down, X:%d, Y:%d, W:%d\n",
+							printk(KERN_INFO "[touch][TP] status:%X, Raw:F:%02d Down, X:%d, Y:%d, W:%d\n",
 							 finger_pressed, loop_i+1, x, y, w);
 						}
 					}
@@ -1294,6 +1343,7 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 					input_mt_slot(ts->input_dev, loop_i);
 
 				if (ts->event_htc_enable_type != SWITCH_TO_HTC_EVENT_ONLY) {
+					printk(KERN_INFO "[touch]code entering 31");
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, w);
 					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);
 					input_report_abs(ts->input_dev, ABS_MT_PRESSURE, w);
@@ -1312,15 +1362,15 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 				if (!ts->first_pressed) {
 					ts->first_pressed = 1;
 					ts->just_resume = 0;
-					printk(KERN_INFO "[TP]S1@%d, %d\n", x, y);
+					printk(KERN_INFO "[touch][TP]S1@%d, %d\n", x, y);
 				}
-
+//32
 				ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
-
+				printk(KERN_INFO "[touch]what is this array storing %d and %d", ts->pre_finger_data[loop_i][0],ts->pre_finger_data[loop_i][1]);
 
 				if (ts->debug_log_level & 0x2)
-					printk(KERN_INFO "[TP]Finger %d=> X:%d, Y:%d w:%d, z:%d, F:%d\n",
+					printk(KERN_INFO "[touch][TP]Finger %d=> X:%d, Y:%d w:%d, z:%d, F:%d\n",
 						loop_i + 1, x, y, w, w, loop_i + 1);
 			} else {
 				if (ts->protocol_type == PROTOCOL_TYPE_B) {
@@ -1330,17 +1380,17 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 
 				if (loop_i == 0 && ts->first_pressed == 1) {
 					ts->first_pressed = 2;
-					printk(KERN_INFO "[TP]E1@%d, %d\n",
+					printk(KERN_INFO "[touch][TP]E1@%d, %d\n",
 					ts->pre_finger_data[0][0] , ts->pre_finger_data[0][1]);
 				}
 				if ((ts->debug_log_level & BIT(3)) > 0) {
 					if ((((old_finger >> loop_i) ^ (finger_pressed >> loop_i)) & 1) == 1) {
 						if (ts->useScreenRes) {
-							printk(KERN_INFO "[TP] status:%X, Screen:F:%02d Up, X:%d, Y:%d\n",
+							printk(KERN_INFO "[touch][TP] status:%X, Screen:F:%02d Up, X:%d, Y:%d\n",
 							 finger_pressed, loop_i+1, ts->pre_finger_data[loop_i][0] * ts->widthFactor >> SHIFTBITS,
 							 ts->pre_finger_data[loop_i][1] * ts->heightFactor >> SHIFTBITS);
 						} else {
-							printk(KERN_INFO "[TP] status:%X, Raw:F:%02d Up, X:%d, Y:%d\n",
+							printk(KERN_INFO "[touch][TP] status:%X, Raw:F:%02d Up, X:%d, Y:%d\n",
 							 finger_pressed, loop_i+1, ts->pre_finger_data[loop_i][0],
 							 ts->pre_finger_data[loop_i][1]);
 						}
@@ -1358,7 +1408,7 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 workqueue_out:
 	return;
 err_workqueue_out:
-	printk(KERN_INFO "[TP]%s: Now reset the Touch chip.\n", __func__);
+	printk(KERN_INFO "[touch][TP]%s: Now reset the Touch chip.\n", __func__);
 	ts->pdata->reset();
 	goto workqueue_out;
 }
@@ -1388,7 +1438,7 @@ static enum hrtimer_restart himax_ts_timer_func(struct hrtimer *timer)
 static void himax_cable_tp_status_handler_func(int connect_status)
 {
 	struct himax_ts_data *ts;
-	printk(KERN_INFO "[TP]Touch: cable change to %d\n", connect_status);
+	printk(KERN_INFO "[touch][TP]Touch: cable change to %d\n", connect_status);
 	ts = private_ts;
 	if (ts->cable_config) {
 		if (!ts->suspend_mode) {
@@ -1402,13 +1452,13 @@ static void himax_cable_tp_status_handler_func(int connect_status)
 			i2c_himax_master_write(ts->client, ts->cable_config,
 				 sizeof(ts->cable_config), HIMAX_I2C_RETRY_TIMES);
 
-			printk(KERN_INFO "[TP]%s: Cable status change: 0x%2.2X\n", __func__, ts->cable_config[1]);
+			printk(KERN_INFO "[touch][TP]%s: Cable status change: 0x%2.2X\n", __func__, ts->cable_config[1]);
 		} else {
 			if (connect_status)
 				ts->usb_connected = 0x01;
 			else
 				ts->usb_connected = 0x00;
-			printk(KERN_INFO "[TP]%s: Cable status remembered: 0x%2.2X\n", __func__, ts->usb_connected);
+			printk(KERN_INFO "[touch][TP]%s: Cable status remembered: 0x%2.2X\n", __func__, ts->usb_connected);
 		}
 	}
 }
@@ -1465,12 +1515,12 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 
 	if (pdata->loadSensorConfig) {
 		if (pdata->loadSensorConfig(client, pdata, &(ts->i2c_api)) < 0) {
-			printk(KERN_INFO "[TP]%s: Load Sesnsor configuration failed, unload driver.\n", __func__);
+			printk(KERN_INFO "[touch][TP]%s: Load Sesnsor configuration failed, unload driver.\n", __func__);
 			goto err_detect_failed;
 		}
 	} else {
 		if (himax_loadSensorConfig(client, pdata) < 0) {
-			printk(KERN_INFO "[TP]%s: Load Sesnsor configuration failed, unload driver.\n", __func__);
+			printk(KERN_INFO "[touch][TP]%s: Load Sesnsor configuration failed, unload driver.\n", __func__);
 			goto err_detect_failed;
 		}
 	}
@@ -1498,7 +1548,7 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 
 	ts->cable_config = pdata->cable_config;
 	ts->protocol_type = pdata->protocol_type;
-	printk(KERN_INFO "[TP]%s: Use Protocol Type %c\n", __func__,
+	printk(KERN_INFO "[touch][TP]%s: Use Protocol Type %c\n", __func__,
 		 ts->protocol_type == PROTOCOL_TYPE_A ? 'A' : 'B');
 
 	ts->input_dev = input_allocate_device();
@@ -1531,7 +1581,7 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 		input_mt_init_slots(ts->input_dev, HIMAX8526A_FINGER_SUPPORT_NUM);
 	}
 
-	printk(KERN_INFO "[TP]input_set_abs_params: mix_x %d, max_x %d, min_y %d, max_y %d\n",
+	printk(KERN_INFO "[touch][TP]input_set_abs_params: mix_x %d, max_x %d, min_y %d, max_y %d\n",
 		pdata->abs_x_min, pdata->abs_x_max, pdata->abs_y_min, pdata->abs_y_max);
 
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X,
@@ -1560,7 +1610,7 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 
 	if (get_tamper_sf() == 0) {
 		ts->debug_log_level |= BIT(3);
-		printk(KERN_INFO "[TP]%s: Enable touch down/up debug log since not security-on device",
+		printk(KERN_INFO "[touch][TP]%s: Enable touch down/up debug log since not security-on device",
 			__func__);
 		if (pdata->screenWidth > 0 && pdata->screenHeight > 0 &&
 		 (pdata->abs_x_max - pdata->abs_x_min) > 0 &&
@@ -1575,7 +1625,7 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 				ts->useScreenRes = 0;
 			}
 		} else
-			printk(KERN_INFO "[TP] Enable finger debug with raw position mode!\n");
+			printk(KERN_INFO "[touch][TP] Enable finger debug with raw position mode!\n");
 	}
 
 
@@ -1603,14 +1653,14 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 		ret = request_threaded_irq(client->irq, NULL, himax_ts_thread,
 				  IRQF_TRIGGER_LOW | IRQF_ONESHOT, client->name, ts);
 		if (ret == 0) {
-			printk(KERN_INFO "[TP]%s: irq enabled at qpio: %d\n", __func__, client->irq);
+			printk(KERN_INFO "[touch][TP]%s: irq enabled at qpio: %d\n", __func__, client->irq);
 			ts->irq = pdata->gpio_irq;
 		} else {
 			ts->use_irq = 0;
 			printk(KERN_ERR "[TP][TOUCH_ERR]%s: request_irq failed\n", __func__);
 		}
 	} else {
-		printk(KERN_INFO "[TP]%s: client->irq is empty, use polling mode.\n", __func__);
+		printk(KERN_INFO "[touch][TP]%s: client->irq is empty, use polling mode.\n", __func__);
 	}
 
 	if (!ts->use_irq) {
@@ -1623,7 +1673,7 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 		hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		ts->timer.function = himax_ts_timer_func;
 		hrtimer_start(&ts->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
-		printk(KERN_INFO "[TP]%s: polling mode enabled\n", __func__);
+		printk(KERN_INFO "[touch][TP]%s: polling mode enabled\n", __func__);
 	}
 	return 0;
 
@@ -1673,16 +1723,18 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 	int ret;
 	uint8_t data = 0x01;
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
-	uint8_t new_command[2] = {0x91, 0x00};
+	/*uint8_t new_command[2] = {0x91, 0x00};
 
 	i2c_himax_master_write(ts->client, new_command, sizeof(new_command),
-		 HIMAX_I2C_RETRY_TIMES);
+		 HIMAX_I2C_RETRY_TIMES);*/
 
 	printk(KERN_DEBUG "[TP]%s: diag_command= %d\n", __func__, ts->diag_command);
+//s2w
+	enable_irq_wake(client->irq);
 
-	printk(KERN_INFO "[TP]%s: enter\n", __func__);
+	printk(KERN_INFO "[touch][TP]%s: enter\n", __func__);
 
-	disable_irq(client->irq);
+	//disable_irq(client->irq);
 
 	if (!ts->use_irq) {
 		ret = cancel_work_sync(&ts->work);
@@ -1690,11 +1742,13 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 			enable_irq(client->irq);
 	}
 
-	i2c_himax_write_command(ts->client, 0x82, HIMAX_I2C_RETRY_TIMES);
+	/*i2c_himax_write_command(ts->client, 0x82, HIMAX_I2C_RETRY_TIMES);
 	msleep(30);
 	i2c_himax_write_command(ts->client, 0x80, HIMAX_I2C_RETRY_TIMES);
 	msleep(30);
-	i2c_himax_write(ts->client, 0xD7, &data, 1, HIMAX_I2C_RETRY_TIMES);
+	i2c_himax_write(ts->client, 0xD7, &data, 1, HIMAX_I2C_RETRY_TIMES);*/
+
+disable_irq_wake(client->irq);
 
 	ts->first_pressed = 0;
 	ts->suspend_mode = 1;
@@ -1713,11 +1767,11 @@ static int himax8526a_resume(struct i2c_client *client)
 	uint8_t new_command[2] = {0x91, 0x00};
 
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
-	printk(KERN_INFO "[TP]%s: enter\n", __func__);
+	printk(KERN_INFO "[touch][TP]%s: enter\n", __func__);
 	if (ts->pdata->powerOff3V3 && ts->pdata->power)
 		ts->pdata->power(1);
 
-	data[0] = 0x00;
+	/*data[0] = 0x00;
 	i2c_himax_write(ts->client, 0xD7, &data[0], 1, HIMAX_I2C_RETRY_TIMES);
 	hr_msleep(5);
 
@@ -1733,14 +1787,15 @@ static int himax8526a_resume(struct i2c_client *client)
 		hr_msleep(1);
 		i2c_himax_master_write(ts->client, ts->pdata->regCD, 3, HIMAX_I2C_RETRY_TIMES);
 #if 0
-		printk(KERN_INFO "[TP]%s: Issue 0x36, 0xDD to prevent potential ESD problem.\n", __func__);
+		printk(KERN_INFO "[touch][TP]%s: Issue 0x36, 0xDD to prevent potential ESD problem.\n", __func__);
 #endif
 		hr_msleep(1);
 	}
 	i2c_himax_write_command(ts->client, 0x83, HIMAX_I2C_RETRY_TIMES);
 	hr_msleep(30);
 
-	i2c_himax_write_command(ts->client, 0x81, HIMAX_I2C_RETRY_TIMES);
+	i2c_himax_write_command(ts->client, 0x81, HIMAX_I2C_RETRY_TIMES);*/
+
 #if 0
 	printk(KERN_DEBUG "[TP]%s: diag_command= %d\n", __func__, ts->diag_command);
 #endif
