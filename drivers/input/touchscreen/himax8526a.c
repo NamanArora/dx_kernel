@@ -1306,8 +1306,8 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 				int w = buf[16 + loop_i];
 				finger_num--;
 					
-					if(x>=100 && x<=1000 && y>=1000)
-					{//we are in the button area
+					if(x>=400 && x<=700 && y>=1000)
+					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]s2w area current x %d", x);
 					 printk(KERN_INFO "[touch]s2w area current y %d", y);	
 					 if(x==(buf[0]<<8| buf[1]))	//so that finger doesnt move			 
