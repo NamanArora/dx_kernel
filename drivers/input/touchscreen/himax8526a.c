@@ -32,7 +32,7 @@
 
 #define HIMAX_I2C_RETRY_TIMES 10
 #define ESD_WORKAROUND
-#define FAKE_EVENT
+
 #define SUPPORT_FINGER_DATA_CHECKSUM 0x0F
 
 struct himax_ts_data {
@@ -1130,10 +1130,10 @@ static DEFINE_MUTEX(s2w_lock);
 void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(100);
+	msleep(250);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(100);
+	msleep(250);
 	printk(KERN_INFO "[touch][TS][S2W]%s: Turn it on", __func__);
 	mutex_unlock(&s2w_lock);
 	//himax_s2w_release();
@@ -1143,8 +1143,8 @@ static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
 void s2wfunc(void)
  {
 
- 	if (mutex_trylock(&s2w_lock)) 
- 		schedule_work(&himax_s2w_power_work);
+ 	mutex_lock(&s2w_lock);
+ 	schedule_work(&himax_s2w_power_work);
 				      
  }
 
@@ -1152,7 +1152,9 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 {
 	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
 	uint8_t finger_on = 0;
-static int counter=0,scr=1;
+static int counter=0;
+static int scr=1;
+
 #ifdef ESD_WORKAROUND
 	uint32_t checksum;
 #endif
@@ -1305,17 +1307,19 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 				int y = (buf[base + 2] << 8 | buf[base + 3]);
 				int w = buf[16 + loop_i];
 				finger_num--;
-					
+
+//TODO				
+//We need a time counter which counts the time spent on pressing the middle key.. then we can safely remove "int counter" from the codes
+//For waking it up first we need to press any other button so that the else case gets executed.. only then h2w works
 					if(x>=400 && x<=700 && y>=1000)
 					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]s2w area current x %d", x);
-					 printk(KERN_INFO "[touch]s2w area current y %d", y);	
-					 if(x==(buf[0]<<8| buf[1]))	//so that finger doesnt move			 
-					 counter+=x;
+					 printk(KERN_INFO "[touch]s2w area current y %d", y);			 
+					 counter++;
 					 printk(KERN_INFO "[touch]current counter value %d", counter);
-					 if(counter >=16000 && scr){counter=0;
+					 if(counter >=40 && scr){counter=0; 
 					 s2wfunc(); scr=0;}
-					}else{counter=0; scr=1;}
+					}else{scr=1;counter=0;}
 					
 //29
 				if (ts->event_htc_enable_type) {
@@ -1747,7 +1751,7 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 	i2c_himax_write_command(ts->client, 0x80, HIMAX_I2C_RETRY_TIMES);
 	msleep(30);
 	i2c_himax_write(ts->client, 0xD7, &data, 1, HIMAX_I2C_RETRY_TIMES);*/
-
+msleep(250);
 disable_irq_wake(client->irq);
 
 	ts->first_pressed = 0;
@@ -1767,6 +1771,8 @@ static int himax8526a_resume(struct i2c_client *client)
 	uint8_t new_command[2] = {0x91, 0x00};
 
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
+	msleep(250);
+	disable_irq_wake(client->irq);
 	printk(KERN_INFO "[touch][TP]%s: enter\n", __func__);
 	if (ts->pdata->powerOff3V3 && ts->pdata->power)
 		ts->pdata->power(1);
@@ -1816,7 +1822,6 @@ static int himax8526a_resume(struct i2c_client *client)
 		 sizeof(ts->cable_config), HIMAX_I2C_RETRY_TIMES);
 
 	ts->suspend_mode = 0;
-	ts->just_resume = 1;
 
 	enable_irq(client->irq);
 
