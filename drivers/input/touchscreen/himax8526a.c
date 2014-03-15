@@ -1752,7 +1752,6 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 	msleep(30);
 	i2c_himax_write(ts->client, 0xD7, &data, 1, HIMAX_I2C_RETRY_TIMES);*/
 msleep(250);
-disable_irq_wake(client->irq);
 
 	ts->first_pressed = 0;
 	ts->suspend_mode = 1;
