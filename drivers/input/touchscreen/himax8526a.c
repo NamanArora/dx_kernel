@@ -70,6 +70,7 @@ struct himax_ts_data {
 	uint32_t heightFactor;
 	uint8_t useScreenRes;
 	int h2w_used;
+	int counter;
 #ifdef FAKE_EVENT
 	int fake_X_S;
 	int fake_Y_S;
@@ -80,6 +81,7 @@ struct himax_ts_data {
 static struct himax_ts_data *private_ts;
 void enable_again(){
 
+private_ts->counter=0;
 private_ts->h2w_used = 1;
 }
 #define SWITCH_TO_HTC_EVENT_ONLY	1
@@ -1156,7 +1158,6 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 {
 	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
 	uint8_t finger_on = 0;
-static int counter=0;
 static int scr=1;
 
 #ifdef ESD_WORKAROUND
@@ -1315,15 +1316,15 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 				finger_num--;
 
 //TODO				
-//We need a time counter which counts the time spent on pressing the middle key.. then we can safely remove "int counter" from the codes
+//We need a time private_ts->counter which counts the time spent on pressing the middle key.. then we can safely remove "int private_ts->counter" from the codes
 //For waking it up first we need to press any other button so that the else case gets executed.. only then h2w works
 					if(x>=480 && x<=630 && y>=1000)
 					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]s2w area current x %d", x);
 					 printk(KERN_INFO "[touch]s2w area current y %d", y);			 
-					 counter++;
-					 printk(KERN_INFO "[touch]current counter value %d", counter);
-					 if(counter >=40 && private_ts->h2w_used){counter=0; 
+					 private_ts->counter++;
+					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
+					 if(private_ts->counter >=40 && private_ts->h2w_used){private_ts->counter=0; 
 					 s2wfunc(); private_ts->h2w_used=0;}
 					}
 					
