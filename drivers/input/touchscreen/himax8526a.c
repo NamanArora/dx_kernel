@@ -1759,7 +1759,8 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 	msleep(30);
 	i2c_himax_write(ts->client, 0xD7, &data, 1, HIMAX_I2C_RETRY_TIMES);
 msleep(250);*/
-
+if (ts->pdata->powerOff3V3 && ts->pdata->power)
+	                ts->pdata->power(0);
 	ts->first_pressed = 0;
 	ts->suspend_mode = 1;
 	ts->pre_finger_mask = 0;
@@ -1779,7 +1780,8 @@ static int himax8526a_resume(struct i2c_client *client)
 	msleep(250);
 	disable_irq_wake(client->irq);
 	printk(KERN_INFO "[touch][TP]%s: enter\n", __func__);
-
+ if (ts->pdata->powerOff3V3 && ts->pdata->power)
+	                ts->pdata->power(1);
 
 	/*data[0] = 0x00;
 	i2c_himax_write(ts->client, 0xD7, &data[0], 1, HIMAX_I2C_RETRY_TIMES);
@@ -1826,7 +1828,8 @@ static int himax8526a_resume(struct i2c_client *client)
 		 sizeof(ts->cable_config), HIMAX_I2C_RETRY_TIMES);
 
 	ts->suspend_mode = 0;
-
+	ts->just_resume = 1;
+	enable_irq(client->irq);
 
 
 	return 0;
