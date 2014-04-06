@@ -1318,7 +1318,7 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 /*TODO				
 current bug:sometimes the screen doesnt wake(most probably because of the touch coordinates)
 
-3 stages of pressing the middle button acc to my logic: 
+3 stages of pressing the middle button acc to my logic: needs to be implemented
 1.normal press of middle button to minimize.. counter<15
 2.h2w activate.. 15<counter<40
 3.gsearch init(long press) counter >40
@@ -1329,7 +1329,7 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 					 printk(KERN_INFO "[touch]s2w area current y %d", y);			 
 					 private_ts->counter++;
 					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
-					 if(private_ts->counter <=40 && private_ts->h2w_used && private_ts->counter >=15){private_ts->counter=0; 
+					 if(private_ts->counter >=40 && private_ts->h2w_used){private_ts->counter=0; 
 					 s2wfunc(); private_ts->h2w_used=0;}
 					}
 					
