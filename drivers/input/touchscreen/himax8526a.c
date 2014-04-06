@@ -1315,16 +1315,21 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 				int w = buf[16 + loop_i];
 				finger_num--;
 
-//TODO				
-//We need a time private_ts->counter which counts the time spent on pressing the middle key.. then we can safely remove "int private_ts->counter" from the codes
-//For waking it up first we need to press any other button so that the else case gets executed.. only then h2w works
-					if(x>=480 && x<=630 && y>=1000)
+/*TODO				
+current bug:sometimes the screen doesnt wake(most probably because of the touch coordinates)
+
+3 stages of pressing the middle button acc to my logic: 
+1.normal press of middle button to minimize.. counter<15
+2.h2w activate.. 15<counter<40
+3.gsearch init(long press) counter >40
+*/
+					if(x>=350 && x<=650 && y>=1000)
 					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]s2w area current x %d", x);
 					 printk(KERN_INFO "[touch]s2w area current y %d", y);			 
 					 private_ts->counter++;
 					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
-					 if(private_ts->counter >=40 && private_ts->h2w_used){private_ts->counter=0; 
+					 if(private_ts->counter <=40 && private_ts->h2w_used && private_ts->counter >=15){private_ts->counter=0; 
 					 s2wfunc(); private_ts->h2w_used=0;}
 					}
 					
@@ -1731,6 +1736,7 @@ static int himax8526a_remove(struct i2c_client *client)
 
 static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 {
+printk(KERN_INFO "[touch]code entering himax8526a_suspend");
 	int ret;
 	uint8_t data = 0x01;
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
@@ -1771,6 +1777,7 @@ if (ts->pdata->powerOff3V3 && ts->pdata->power)
 
 static int himax8526a_resume(struct i2c_client *client)
 {
+printk(KERN_INFO "[touch]code entering himax8526a_resume");
 	uint8_t data[2] = { 0 };
 	const uint8_t command_ec_128_raw_flag = 0x01;
 	const uint8_t command_ec_128_raw_baseline_flag = 0x02 | command_ec_128_raw_flag;
@@ -1829,7 +1836,6 @@ static int himax8526a_resume(struct i2c_client *client)
 
 	ts->suspend_mode = 0;
 	ts->just_resume = 1;
-	enable_irq(client->irq);
 
 
 	return 0;
@@ -1838,17 +1844,21 @@ static int himax8526a_resume(struct i2c_client *client)
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void himax_ts_early_suspend(struct early_suspend *h)
-{
+{printk(KERN_INFO "[touch]code entering himax_ts_early_suspend");
 	struct himax_ts_data *ts;
 	ts = container_of(h, struct himax_ts_data, early_suspend);
+	msleep(100);
 	himax8526a_suspend(ts->client, PMSG_SUSPEND);
+	msleep(100);
 }
 
 static void himax_ts_late_resume(struct early_suspend *h)
-{
+{printk(KERN_INFO "[touch]code entering himax_ts_late_resume");
 	struct himax_ts_data *ts;
 	ts = container_of(h, struct himax_ts_data, early_suspend);
+	msleep(100);
 	himax8526a_resume(ts->client);
+	msleep(100);
 
 }
 #endif
