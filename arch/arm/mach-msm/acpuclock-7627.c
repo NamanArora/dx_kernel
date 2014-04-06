@@ -15,7 +15,7 @@
  * GNU General Public License for more details.
  *
  */
-#include "uv.h"
+
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -287,29 +287,14 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1401[] = {
 	{ 1, 1401600, ACPU_PLL_4, 6, 0, 175000, 3, 7, 200000, &pll4_cfg_tbl[3]},
 	{ 0 }
 };
-#ifdef WE_WANT_UV
+
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008_2p0[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
 	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1, 61440 },
-	{ 0, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
-	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 2, 61440 },
-	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 122880 },
-	{ 0, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 3, 122880 },
-	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 4, 122880 },
-	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 160000 },
-	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 5, 160000 },
-	{ 1, 800000, ACPU_PLL_4, 6, 0, 100000, 3, 6, 200000 },
-	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
-	{ 0 }
-};
-#else
-static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008_2p0[] = {
-	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
-	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1, 61440 },
-	{ 0, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
+	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3, 61440 },
 	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 122880 },
-	{ 0, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 3, 122880 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 160000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 160000 },
@@ -317,7 +302,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008_2p0[] = {
 	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
 	{ 0 }
 };
-#endif
+
 static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1008_2p0[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 24576 },
 	{ 0, 65536, ACPU_PLL_1, 1, 3,  8192, 3, 1, 49152 },
@@ -556,62 +541,18 @@ static void acpuclk_config_pll4(struct pll_config *pll)
 
 static int acpuclk_set_vdd_level(int vdd)
 {
-	uint32_t current_vdd,address,voltage;
+	uint32_t current_vdd;
 
 	if ((cpu_is_msm7x27a() || cpu_is_msm7x25a()) &&
 		(SOCINFO_VERSION_MINOR(socinfo_get_version()) < 1))
 		return 0;
 
-	address= readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR); //value varies from 27,45,63,54
+	current_vdd = readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR) & 0x07;
 
-/*
-
-	current_vdd  Address   
-
-	7		63    
-	6		54
-	5		45
-	3		27
-
-	tgt_vdd     	Voltage
-	
-	7		184
-	6		176
-	5		168
-	4		162
-	3		152
-*/
-
-	current_vdd = address & 0x07;
-
-	printk(KERN_INFO "Switching VDD from %u mV -> %d mV\n",
+	pr_debug("Switching VDD from %u mV -> %d mV\n",
 	       current_vdd, vdd);
 
-	voltage= (1 << 7) | (vdd << 3);
-#ifdef WE_WANT_UV
-switch(vdd)
-{
-case 6:
-voltage=183-readval;
-break;
-case 5:
-voltage=175-readval;
-break;
-case 4:
-voltage=167-readval;
-break;
-case 3:
-voltage=161-readval;
-break;
-case 2:
-voltage=151-readval;
-break;
-}
-#endif
-	printk(KERN_INFO "Switching address %u and voltage %d mV\n",
-	       address, voltage);
-
-	writel_relaxed(voltage , A11S_VDD_SVS_PLEVEL_ADDR);
+	writel_relaxed((1 << 7) | (vdd << 3), A11S_VDD_SVS_PLEVEL_ADDR);
 	mb();
 	udelay(62);
 	if ((readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR) & 0x7) != vdd) {
