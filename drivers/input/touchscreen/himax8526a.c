@@ -32,6 +32,7 @@
 #include <asm/atomic.h>
 #include <mach/board_htc.h>
 #include <mach/msm_vibrator.h>
+#include <linux/pl_sensor.h>
 
 
 #define HIMAX_S2W
@@ -124,6 +125,8 @@ static int s2w_switch = 1;
 static int s2l_switch = 0;
 static int h2w_switch = 0;
 static int dt2w_switch = 0;
+static int pocketmode_isin;
+static int pocketmode_switch = 0;
 static struct hrtimer s2w_timer;
 static struct hrtimer h2w_timer;
 static ktime_t s2w_ktime;
@@ -1132,15 +1135,22 @@ void himax_h2w_timerStart() {
 void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
 	if (!mutex_trylock(&pwrkeyworklock))
                 return;
-	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
-	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(100);
-	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
-	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(100);
-	printk(KERN_INFO "[TS][S2W]%s: Turn it on\n", __func__);
-	mutex_unlock(&pwrkeyworklock);
+	if (pocketmode_switch) {
+		pocketmode_isin = power_key_check_in_pocket();	
+	}
+	if ((pocketmode_switch == 0) || (pocketmode_isin == 0)) {
+		himax_s2w_vibpat();
+		himax_s2w_timerStart();
+		input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
+		input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+		msleep(100);
+		input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
+		input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+		msleep(100);
+		printk(KERN_INFO "[TS][S2W]%s: Turn it on\n", __func__);
+	}
 	himax_s2w_release();
+	mutex_unlock(&pwrkeyworklock);
 }
 static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
 
@@ -1177,8 +1187,6 @@ enum hrtimer_restart h2w_hrtimer_callback( struct hrtimer *timer )
 		private_ts->h2w_active = 0;
 		printk(KERN_INFO "[TS][S2W]%s: H2W Activated\n", __func__);
 		schedule_work(&himax_s2w_power_work);	
-		himax_s2w_timerStart();	
-		himax_s2w_vibpat();	
 	}
 	if (dt2w_switch)
 	{
@@ -1215,7 +1223,7 @@ int himax_s2w_resetChip() {
 
 /* s2w is enabled by default. 
 	USAGE:
-	format: xyza
+	format: xyzab
 	x: s2w on-off [0-1]
 	y: s2l on-off [0-1]
 	z: h2w on-off [0-1]
@@ -1255,6 +1263,7 @@ static ssize_t himax_x2wSettings_set(struct device *dev,
 			dt2w_switch = 1;
 		else
 			dt2w_switch = 0;
+
 		himax_s2w_timerStart();	
 	}
 	return count;
@@ -1288,6 +1297,31 @@ static ssize_t himax_s2la_set(struct device *dev,
 static DEVICE_ATTR(s2lactive, (S_IWUSR|S_IRUGO),
 	himax_s2la_show, himax_s2la_set);
 
+/* Pocket mode controls!
+		su -c 'echo 1 > /sys/android_touch/s2w_pocketmode'
+*/
+static ssize_t himax_pocketa_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+	count += sprintf(buf, "%d\n", pocketmode_switch);
+	return count;
+}
+
+static ssize_t himax_pocketa_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (buf[0] == '1')
+		pocketmode_switch = 1;
+	else
+		pocketmode_switch = 0;
+	pocketmode_isin = 0;
+	return count;
+}
+
+static DEVICE_ATTR(s2w_pocketmode, (S_IWUSR|S_IRUGO),
+	himax_pocketa_show, himax_pocketa_set);
+
 void himax_s2w_func(int x) {
 	//printk(KERN_INFO "[TS][S2W]%s: %d", __func__, x);
 	int xDiff = 0;
@@ -1299,8 +1333,6 @@ void himax_s2w_func(int x) {
 		if ((abs(xDiff) > 600) && s2w_switch && ((private_ts->suspend_mode == 1) || (s2l_switch == 0)) )
 		{
 			schedule_work(&himax_s2w_power_work);	
-			himax_s2w_timerStart();	
-			himax_s2w_vibpat();
 		}
 		// the below code has been isolated to support s2l even when s2w is not enabled
 		if ((s2l_switch == 1) && (private_ts->suspend_mode == 0) && (xDiff > 600))
@@ -1322,9 +1354,7 @@ void himax_s2w_func(int x) {
 			private_ts->dt2w_flag = 1;
 			himax_h2w_timerStart();
 			if ((private_ts->dt2w_counter > 1) && !private_ts->dt2w_denied) {
-				schedule_work(&himax_s2w_power_work);	
-				himax_s2w_timerStart();	
-				himax_s2w_vibpat();			
+				schedule_work(&himax_s2w_power_work);				
 			}
 			else if (private_ts->dt2w_denied == 1)
 			{
@@ -1405,6 +1435,11 @@ static int himax_touch_sysfs_init(void)
 		printk(KERN_ERR "[TS]%s: sysfs_create_file s2lactive failed\n", __func__);
 		return ret;
 	}
+	ret = sysfs_create_file(android_touch_kobj, &dev_attr_s2w_pocketmode.attr);
+	if (ret) {
+		printk(KERN_ERR "[TS]%s: sysfs_create_file s2w_pocketmode failed\n", __func__);
+		return ret;
+	}
 #ifdef FAKE_EVENT
 	ret = sysfs_create_file(android_touch_kobj, &dev_attr_fake_event.attr);
 	if (ret) {
@@ -1432,6 +1467,7 @@ static void himax_touch_sysfs_deinit(void)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_attn.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_x2wsettings.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_s2lactive.attr);
+	sysfs_remove_file(android_touch_kobj, &dev_attr_s2w_pocketmode.attr);
 #ifdef FAKE_EVENT
 	sysfs_remove_file(android_touch_kobj, &dev_attr_fake_event.attr);
 #endif
