@@ -114,6 +114,7 @@ void himax_s2w_vibpat(void);
 void himax_s2w_timerInit(void);
 void himax_s2w_timerStart(void);
 void himax_h2w_timerStart(void);
+void himax_h2w_pwrFunc(void);
 int himax_s2w_resetChip(void);
 int himax_s2w_status(void);
 int himax_s2w_enabled(void);
@@ -124,8 +125,8 @@ static struct input_dev * sweep2wake_pwrdev;
 static int s2w_switch = 1;
 static int s2l_switch = 0;
 static int h2w_switch = 0;
+static int h2w_goahead = 0;
 static int dt2w_switch = 0;
-static int pocketmode_isin;
 static int pocketmode_switch = 0;
 static struct hrtimer s2w_timer;
 static struct hrtimer h2w_timer;
@@ -1125,34 +1126,39 @@ void himax_s2w_timerStart() {
 
 void himax_h2w_timerStart() {
   	printk(KERN_INFO "[TS][S2W]%s: H2W/DT2W Timer activated.\n", __func__);
-	if (!private_ts->h2w_timerdenied) {
+	if (!private_ts->h2w_timerdenied && !h2w_goahead) {
 		private_ts->h2w_timerdenied = 1;
 		hrtimer_start( &h2w_timer, h2w_ktime, HRTIMER_MODE_REL );	
 	}
 }
 
-
 void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
 	if (!mutex_trylock(&pwrkeyworklock))
                 return;
-	if (pocketmode_switch) {
-		pocketmode_isin = power_key_check_in_pocket();	
-	}
-	if ((pocketmode_switch == 0) || (pocketmode_isin == 0)) {
-		himax_s2w_vibpat();
-		himax_s2w_timerStart();
-		input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
-		input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-		msleep(100);
-		input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
-		input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-		msleep(100);
-		printk(KERN_INFO "[TS][S2W]%s: Turn it on\n", __func__);
-	}
+	himax_s2w_vibpat();
+	himax_s2w_timerStart();
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
+	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+	msleep(100);
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
+	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+	msleep(100);
+	printk(KERN_INFO "[TS][S2W]%s: Turn it on\n", __func__);
 	himax_s2w_release();
 	mutex_unlock(&pwrkeyworklock);
 }
 static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
+
+void himax_h2w_pwrFunc() {
+	if (pocketmode_switch) {
+		if (!power_key_check_in_pocket() && !private_ts->s2w_timerdenied)
+			schedule_work(&himax_s2w_power_work);	
+		else
+			himax_s2w_timerStart();
+	}
+	else
+		schedule_work(&himax_s2w_power_work);		
+}
 
 extern void himax_s2w_setinp(struct input_dev *dev) {
 	sweep2wake_pwrdev = dev;
@@ -1186,7 +1192,7 @@ enum hrtimer_restart h2w_hrtimer_callback( struct hrtimer *timer )
 	if ((private_ts->h2w_active == 1) && !private_ts->h2w_denied && h2w_switch){
 		private_ts->h2w_active = 0;
 		printk(KERN_INFO "[TS][S2W]%s: H2W Activated\n", __func__);
-		schedule_work(&himax_s2w_power_work);	
+		h2w_goahead = 1;	
 	}
 	if (dt2w_switch)
 	{
@@ -1315,7 +1321,6 @@ static ssize_t himax_pocketa_set(struct device *dev,
 		pocketmode_switch = 1;
 	else
 		pocketmode_switch = 0;
-	pocketmode_isin = 0;
 	return count;
 }
 
@@ -1332,7 +1337,7 @@ void himax_s2w_func(int x) {
 		xDiff = private_ts->s2w_x_pos - x;
 		if ((abs(xDiff) > 600) && s2w_switch && ((private_ts->suspend_mode == 1) || (s2l_switch == 0)) )
 		{
-			schedule_work(&himax_s2w_power_work);	
+			himax_h2w_pwrFunc();	
 		}
 		// the below code has been isolated to support s2l even when s2w is not enabled
 		if ((s2l_switch == 1) && (private_ts->suspend_mode == 0) && (xDiff > 600))
@@ -1354,7 +1359,7 @@ void himax_s2w_func(int x) {
 			private_ts->dt2w_flag = 1;
 			himax_h2w_timerStart();
 			if ((private_ts->dt2w_counter > 1) && !private_ts->dt2w_denied) {
-				schedule_work(&himax_s2w_power_work);				
+				himax_h2w_pwrFunc();				
 			}
 			else if (private_ts->dt2w_denied == 1)
 			{
@@ -1372,6 +1377,11 @@ void himax_s2w_func(int x) {
 		if ((h2w_switch == 1) && (abs(xDiff) > 10) && !private_ts->h2w_denied)
 		{
 			private_ts->h2w_denied = 1;
+		}
+		if ((h2w_switch == 1) && (h2w_goahead == 1))
+		{
+			h2w_goahead = 0;
+			himax_h2w_pwrFunc();
 		}
 	}
 }
@@ -2004,6 +2014,7 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 	}
 #ifdef HIMAX_S2W
 	private_ts->s2w_touched = 0;
+	h2w_goahead = 0;
 	himax_s2w_timerInit();
 #endif
 	return 0;
