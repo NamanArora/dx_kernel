@@ -16,7 +16,9 @@
 #include <linux/himax8526a.h>
 #include <linux/delay.h>
 #include <linux/earlysuspend.h>
+#include <linux/suspend.h>
 #include <linux/hrtimer.h>
+#include <linux/ktime.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -29,11 +31,16 @@
 #include <mach/board.h>
 #include <asm/atomic.h>
 #include <mach/board_htc.h>
+#include <mach/msm_vibrator.h>
+
+
+#define HIMAX_S2W
 
 #define HIMAX_I2C_RETRY_TIMES 10
 #define ESD_WORKAROUND
 #define FAKE_EVENT
 #define SUPPORT_FINGER_DATA_CHECKSUM 0x0F
+#define MS_TO_NS(x)	(x * 1E6L)
 
 struct himax_ts_data {
 	int use_irq;
@@ -75,6 +82,19 @@ struct himax_ts_data {
 	int fake_X_E;
 	int fake_Y_E;
 #endif
+
+#ifdef HIMAX_S2W
+	int s2w_touched;
+	int s2w_x_pos;
+	int s2l_activated;
+	int s2w_timerdenied;
+	int h2w_timerdenied;
+	int h2w_active;
+	int h2w_denied;
+	int dt2w_counter;
+	int dt2w_flag;
+	int dt2w_denied;
+#endif
 };
 static struct himax_ts_data *private_ts;
 
@@ -84,6 +104,30 @@ static struct himax_ts_data *private_ts;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void himax_ts_early_suspend(struct early_suspend *h);
 static void himax_ts_late_resume(struct early_suspend *h);
+#endif
+
+#ifdef HIMAX_S2W
+static DEFINE_MUTEX(pwrkeyworklock);
+void himax_s2w_release(void);
+void himax_s2w_vibpat(void);
+void himax_s2w_timerInit(void);
+void himax_s2w_timerStart(void);
+void himax_h2w_timerStart(void);
+int himax_s2w_resetChip(void);
+int himax_s2w_status(void);
+int himax_s2w_enabled(void);
+enum hrtimer_restart s2w_hrtimer_callback( struct hrtimer *timer );
+enum hrtimer_restart h2w_hrtimer_callback( struct hrtimer *timer );
+
+static struct input_dev * sweep2wake_pwrdev;
+static int s2w_switch = 1;
+static int s2l_switch = 0;
+static int h2w_switch = 0;
+static int dt2w_switch = 0;
+static struct hrtimer s2w_timer;
+static struct hrtimer h2w_timer;
+static ktime_t s2w_ktime;
+static ktime_t h2w_ktime;
 #endif
 
 int i2c_himax_read(struct i2c_client *client, uint8_t command, uint8_t *data, uint8_t length, uint8_t toRetry)
@@ -1039,6 +1083,270 @@ static ssize_t himax_set_en_sr(struct device *dev, struct device_attribute *attr
 
 static DEVICE_ATTR(sr_en, S_IWUSR, 0, himax_set_en_sr);
 
+#ifdef HIMAX_S2W
+void himax_s2w_release() {
+	private_ts->s2w_touched = 0;
+	private_ts->h2w_active = 0;
+	private_ts->h2w_denied = 0;
+	private_ts->dt2w_flag = 0;
+	printk(KERN_INFO "[TS][S2W]%s: Sweep2Wake Released\n", __func__);
+}
+
+void himax_s2w_timerInit() {
+	unsigned long delay_in_ms = 500L;	
+	unsigned long h2w_delay_in_ms = 600L;
+
+	printk(KERN_INFO "[TS][S2W]%s: Setting up timers\n", __func__);
+  	hrtimer_init( &s2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+  	s2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );
+  	s2w_timer.function = &s2w_hrtimer_callback;
+
+	hrtimer_init( &h2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+	h2w_ktime = ktime_set( 0, MS_TO_NS(h2w_delay_in_ms) );
+  	h2w_timer.function = &h2w_hrtimer_callback;
+
+	private_ts->s2w_timerdenied = 0;	
+	private_ts->h2w_timerdenied = 0;
+	private_ts->h2w_denied = 0;
+	
+  	//hrtimer_start( &hr_timer, ktime, HRTIMER_MODE_REL );
+} 
+
+void himax_s2w_timerStart() {
+  	printk(KERN_INFO "[TS][S2W]%s: Timer activated.\n", __func__);
+	if (!private_ts->s2w_timerdenied) {
+		private_ts->s2w_timerdenied = 1;
+		hrtimer_start( &s2w_timer, s2w_ktime, HRTIMER_MODE_REL );	
+	}
+}
+
+void himax_h2w_timerStart() {
+  	printk(KERN_INFO "[TS][S2W]%s: H2W/DT2W Timer activated.\n", __func__);
+	if (!private_ts->h2w_timerdenied) {
+		private_ts->h2w_timerdenied = 1;
+		hrtimer_start( &h2w_timer, h2w_ktime, HRTIMER_MODE_REL );	
+	}
+}
+
+
+void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
+	if (!mutex_trylock(&pwrkeyworklock))
+                return;
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
+	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+	msleep(100);
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
+	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
+	msleep(100);
+	printk(KERN_INFO "[TS][S2W]%s: Turn it on\n", __func__);
+	mutex_unlock(&pwrkeyworklock);
+	himax_s2w_release();
+}
+static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
+
+extern void himax_s2w_setinp(struct input_dev *dev) {
+	sweep2wake_pwrdev = dev;
+}
+EXPORT_SYMBOL(himax_s2w_setinp);
+
+int himax_s2w_status() {
+	return private_ts->s2w_touched;
+}
+
+int himax_s2w_enabled() {
+	return s2w_switch || h2w_switch || dt2w_switch;
+}
+
+void himax_s2w_vibpat() {
+	_vibrate(30);
+} 
+
+enum hrtimer_restart s2w_hrtimer_callback( struct hrtimer *timer )
+{
+  	printk(KERN_INFO "[TS][S2W]%s: Timer finished\n", __func__);
+	private_ts->s2w_timerdenied = 0;
+	himax_s2w_resetChip();
+  	return HRTIMER_NORESTART;
+}
+
+enum hrtimer_restart h2w_hrtimer_callback( struct hrtimer *timer )
+{
+  	printk(KERN_INFO "[TS][S2W]%s: H2W Timer finished\n", __func__);
+	private_ts->h2w_timerdenied = 0;	
+	if ((private_ts->h2w_active == 1) && !private_ts->h2w_denied && h2w_switch){
+		private_ts->h2w_active = 0;
+		printk(KERN_INFO "[TS][S2W]%s: H2W Activated\n", __func__);
+		schedule_work(&himax_s2w_power_work);	
+		himax_s2w_timerStart();	
+		himax_s2w_vibpat();	
+	}
+	if (dt2w_switch)
+	{
+		printk(KERN_INFO "[TS][S2W]%s: DT2W Cancel Activated\n", __func__);
+		private_ts->dt2w_denied = 1;	
+	}
+	
+  	return HRTIMER_NORESTART;
+}
+
+int himax_s2w_resetChip() {
+	struct himax_ts_data *ts_data;
+	int ret = 0;
+	ts_data = private_ts;
+	if (ts_data->pdata->reset) {
+		if (ts_data->use_irq)
+			disable_irq_nosync(ts_data->client->irq);
+		else {
+			hrtimer_cancel(&ts_data->timer);
+			ret = cancel_work_sync(&ts_data->work);
+		}
+
+		printk(KERN_INFO "[TP]%s: Now reset the Touch chip(S2W initiated).\n", __func__);
+
+		ts_data->pdata->reset();
+
+		if (ts_data->use_irq)
+			enable_irq(ts_data->client->irq);
+		else
+			hrtimer_start(&ts_data->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
+	}
+	return 1;
+}
+
+/* s2w is enabled by default. 
+	USAGE:
+	format: xyza
+	x: s2w on-off [0-1]
+	y: s2l on-off [0-1]
+	z: h2w on-off [0-1]
+	a: dt2w on-off [0-1]
+*/
+static ssize_t himax_x2wSettings_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+	count += sprintf(buf + count, "%d\n", s2w_switch);
+	count += sprintf(buf + count, "%d\n", s2l_switch);
+	count += sprintf(buf + count, "%d\n", h2w_switch);
+	count += sprintf(buf + count, "%d\n", dt2w_switch);
+	return count;
+}
+
+static ssize_t himax_x2wSettings_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (sizeof(buf) == 4) {
+		if (buf[0] == '1')
+			s2w_switch = 1;
+		else
+			s2w_switch = 0;
+
+		if (buf[1] == '1')
+			s2l_switch = 1;
+		else
+			s2l_switch = 0;
+
+		if (buf[2] == '1')
+			h2w_switch = 1;
+		else
+			h2w_switch = 0;
+
+		if (buf[3] == '1')
+			dt2w_switch = 1;
+		else
+			dt2w_switch = 0;
+		himax_s2w_timerStart();	
+	}
+	return count;
+}
+
+static DEVICE_ATTR(x2wsettings, (S_IWUSR|S_IRUGO),
+	himax_x2wSettings_show, himax_x2wSettings_set);
+
+
+/* Manual Sweep2Lock controls!
+		su -c 'echo 0 > /sys/android_touch/s2lactive'
+*/
+static ssize_t himax_s2la_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+	count += sprintf(buf, "%d\n", private_ts->s2l_activated);
+	return count;
+}
+
+static ssize_t himax_s2la_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (buf[0] == '1')
+		private_ts->s2l_activated = 1;
+	else
+		private_ts->s2l_activated = 0;
+	return count;
+}
+
+static DEVICE_ATTR(s2lactive, (S_IWUSR|S_IRUGO),
+	himax_s2la_show, himax_s2la_set);
+
+void himax_s2w_func(int x) {
+	//printk(KERN_INFO "[TS][S2W]%s: %d", __func__, x);
+	int xDiff = 0;
+	if (!himax_s2w_status()) {
+		private_ts->s2w_touched = 1;
+		private_ts->s2w_x_pos = x;
+	} else {
+		xDiff = private_ts->s2w_x_pos - x;
+		if ((abs(xDiff) > 600) && s2w_switch && ((private_ts->suspend_mode == 1) || (s2l_switch == 0)) )
+		{
+			schedule_work(&himax_s2w_power_work);	
+			himax_s2w_timerStart();	
+			himax_s2w_vibpat();
+		}
+		// the below code has been isolated to support s2l even when s2w is not enabled
+		if ((s2l_switch == 1) && (private_ts->suspend_mode == 0) && (xDiff > 600))
+		{
+			// toggle soft key lock
+			printk(KERN_INFO "[TS][S2W]%s: Soft key lock toggled\n", __func__);
+			if (private_ts->s2l_activated == 0)
+				private_ts->s2l_activated = 1;
+			else
+				private_ts->s2l_activated = 0; 
+			himax_s2w_timerStart();	 
+			himax_s2w_vibpat();
+		}
+		// the below code assumes s2w is not on
+		//DT2W
+		if (dt2w_switch && !private_ts->dt2w_flag && (private_ts->suspend_mode == 1))
+		{
+			private_ts->dt2w_counter++;
+			private_ts->dt2w_flag = 1;
+			himax_h2w_timerStart();
+			if ((private_ts->dt2w_counter > 1) && !private_ts->dt2w_denied) {
+				schedule_work(&himax_s2w_power_work);	
+				himax_s2w_timerStart();	
+				himax_s2w_vibpat();			
+			}
+			else if (private_ts->dt2w_denied == 1)
+			{
+				private_ts->dt2w_counter = 1;
+				private_ts->dt2w_denied = 0;	
+			}
+		}
+	
+		//H2W
+		if ((h2w_switch == 1) && (private_ts->suspend_mode == 1) && (private_ts->h2w_active == 0) && !private_ts->h2w_denied){
+			private_ts->h2w_active = 1;
+			himax_h2w_timerStart();	 
+			printk(KERN_INFO "[TS][S2W]%s: H2W Initiated\n", __func__);
+		}
+		if ((h2w_switch == 1) && (abs(xDiff) > 10) && !private_ts->h2w_denied)
+		{
+			private_ts->h2w_denied = 1;
+		}
+	}
+}
+#endif
+
 static struct kobject *android_touch_kobj;
 
 static int himax_touch_sysfs_init(void)
@@ -1087,6 +1395,16 @@ static int himax_touch_sysfs_init(void)
 		printk(KERN_ERR "[TP][TOUCH_ERR]%s: sysfs_create_file failed\n", __func__);
 		return ret;
 	}
+	ret = sysfs_create_file(android_touch_kobj, &dev_attr_x2wsettings.attr);
+	if (ret) {
+		printk(KERN_ERR "[TS]%s: sysfs_create_file x2wSettings failed\n", __func__);
+		return ret;
+	}
+	ret = sysfs_create_file(android_touch_kobj, &dev_attr_s2lactive.attr);
+	if (ret) {
+		printk(KERN_ERR "[TS]%s: sysfs_create_file s2lactive failed\n", __func__);
+		return ret;
+	}
 #ifdef FAKE_EVENT
 	ret = sysfs_create_file(android_touch_kobj, &dev_attr_fake_event.attr);
 	if (ret) {
@@ -1112,6 +1430,8 @@ static void himax_touch_sysfs_deinit(void)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_htc_event.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_reset.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_attn.attr);
+	sysfs_remove_file(android_touch_kobj, &dev_attr_x2wsettings.attr);
+	sysfs_remove_file(android_touch_kobj, &dev_attr_s2lactive.attr);
 #ifdef FAKE_EVENT
 	sysfs_remove_file(android_touch_kobj, &dev_attr_fake_event.attr);
 #endif
@@ -1216,7 +1536,6 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 			}
 		}
 	}
-
 	if (buf[20] == 0xFF && buf[21] == 0xFF) {
 		
 		finger_on = 0;
@@ -1259,6 +1578,12 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 
 		if (ts->debug_log_level & 0x2)
 			printk(KERN_INFO "[TP]All Finger leave\n");
+#ifdef HIMAX_S2W
+		if (himax_s2w_enabled()) {
+			if (himax_s2w_status())
+				himax_s2w_release();
+		}
+#endif
 	} else {
 		int8_t old_finger = ts->pre_finger_mask;
 		finger_num = buf[20] & 0x0F;
@@ -1271,6 +1596,18 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 				int y = (buf[base + 2] << 8 | buf[base + 3]);
 				int w = buf[16 + loop_i];
 				finger_num--;
+
+#ifdef HIMAX_S2W
+				if (himax_s2w_enabled()) {
+					if ((y > ts->pdata->abs_y_max) && !private_ts->s2w_timerdenied) {
+						himax_s2w_func(x);
+					} else {
+						if (himax_s2w_status())
+							himax_s2w_release();
+					}
+				}
+				if (((private_ts->s2l_activated == 0) || (y < ts->pdata->abs_y_max)) && !(himax_s2w_enabled() && himax_s2w_status() && (y > ts->pdata->abs_y_max) && (abs(private_ts->s2w_x_pos - x) > 3))) {
+#endif
 
 				if (ts->event_htc_enable_type) {
 					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, w << 16 | w);
@@ -1322,6 +1659,10 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 				if (ts->debug_log_level & 0x2)
 					printk(KERN_INFO "[TP]Finger %d=> X:%d, Y:%d w:%d, z:%d, F:%d\n",
 						loop_i + 1, x, y, w, w, loop_i + 1);
+#ifdef HIMAX_S2W
+				}
+#endif
+
 			} else {
 				if (ts->protocol_type == PROTOCOL_TYPE_B) {
 					input_mt_slot(ts->input_dev, loop_i);
@@ -1625,6 +1966,10 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 		hrtimer_start(&ts->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
 		printk(KERN_INFO "[TP]%s: polling mode enabled\n", __func__);
 	}
+#ifdef HIMAX_S2W
+	private_ts->s2w_touched = 0;
+	himax_s2w_timerInit();
+#endif
 	return 0;
 
 err_create_wq_failed:
@@ -1645,6 +1990,7 @@ err_check_functionality_failed:
 
 static int himax8526a_remove(struct i2c_client *client)
 {
+	int ret;
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
 
 	himax_touch_sysfs_deinit();
@@ -1664,6 +2010,11 @@ static int himax8526a_remove(struct i2c_client *client)
 	kfree(ts->diag_mutual);
 	kfree(ts);
 
+  	ret = hrtimer_cancel( &s2w_timer );
+  	if (ret) printk("[TS][S2W]The timer was still in use...\n");
+	ret = hrtimer_cancel( &h2w_timer );
+  	if (ret) printk("[TS][S2W]H2W The timer was still in use...\n");
+
 	return 0;
 
 }
@@ -1673,28 +2024,56 @@ static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 	int ret;
 	uint8_t data = 0x01;
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
+#ifdef HIMAX_S2W
+	if (!himax_s2w_enabled()) {
+#endif
 	uint8_t new_command[2] = {0x91, 0x00};
 
 	i2c_himax_master_write(ts->client, new_command, sizeof(new_command),
 		 HIMAX_I2C_RETRY_TIMES);
+#ifdef HIMAX_S2W
+	}
+#endif
 
 	printk(KERN_DEBUG "[TP]%s: diag_command= %d\n", __func__, ts->diag_command);
+#ifdef HIMAX_S2W
+	if (himax_s2w_enabled())
+		enable_irq_wake(client->irq);
+#endif
 
 	printk(KERN_INFO "[TP]%s: enter\n", __func__);
+#ifdef HIMAX_S2W
+	if (!himax_s2w_enabled())
+#endif
 
 	disable_irq(client->irq);
 
 	if (!ts->use_irq) {
 		ret = cancel_work_sync(&ts->work);
+#ifdef HIMAX_S2W
+		if (!himax_s2w_enabled()) {
+#endif
+		if (ret && ts->use_irq)
+			enable_irq(client->irq);
+#ifdef HIMAX_S2W
+		}
+#endif
 		if (ret)
 			enable_irq(client->irq);
 	}
 
+#ifdef HIMAX_S2W
+	if (!himax_s2w_enabled()) {
+#endif
 	i2c_himax_write_command(ts->client, 0x82, HIMAX_I2C_RETRY_TIMES);
 	msleep(30);
 	i2c_himax_write_command(ts->client, 0x80, HIMAX_I2C_RETRY_TIMES);
 	msleep(30);
 	i2c_himax_write(ts->client, 0xD7, &data, 1, HIMAX_I2C_RETRY_TIMES);
+#ifdef HIMAX_S2W
+	himax_s2w_timerStart();	
+	}
+#endif
 
 	ts->first_pressed = 0;
 	ts->suspend_mode = 1;
@@ -1713,10 +2092,17 @@ static int himax8526a_resume(struct i2c_client *client)
 	uint8_t new_command[2] = {0x91, 0x00};
 
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
+#ifdef HIMAX_S2W
+	if (himax_s2w_enabled())
+	disable_irq_wake(client->irq);
+#endif
 	printk(KERN_INFO "[TP]%s: enter\n", __func__);
 	if (ts->pdata->powerOff3V3 && ts->pdata->power)
 		ts->pdata->power(1);
 
+#ifdef HIMAX_S2W
+	if (!himax_s2w_enabled()) {
+#endif
 	data[0] = 0x00;
 	i2c_himax_write(ts->client, 0xD7, &data[0], 1, HIMAX_I2C_RETRY_TIMES);
 	hr_msleep(5);
@@ -1741,6 +2127,9 @@ static int himax8526a_resume(struct i2c_client *client)
 	hr_msleep(30);
 
 	i2c_himax_write_command(ts->client, 0x81, HIMAX_I2C_RETRY_TIMES);
+#ifdef HIMAX_S2W
+	}
+#endif
 #if 0
 	printk(KERN_DEBUG "[TP]%s: diag_command= %d\n", __func__, ts->diag_command);
 #endif
@@ -1761,13 +2150,20 @@ static int himax8526a_resume(struct i2c_client *client)
 		 sizeof(ts->cable_config), HIMAX_I2C_RETRY_TIMES);
 
 	ts->suspend_mode = 0;
+#ifdef HIMAX_S2W
+	ts->s2w_touched = 0;
+	himax_s2w_timerStart();	
+	if (!himax_s2w_enabled()) {
+#endif
 	ts->just_resume = 1;
 
 	enable_irq(client->irq);
+#ifdef HIMAX_S2W
+	}
+#endif
 
 	return 0;
 }
-
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void himax_ts_early_suspend(struct early_suspend *h)
