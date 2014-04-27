@@ -375,8 +375,10 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
 KBUILD_AFLAGS_KERNEL :=
-KBUILD_CFLAGS_KERNEL := -w
-KBUILD_AFLAGS   := -D__ASSEMBLY__
+KBUILD_CFLAGS_KERNEL := -w -march=armv7-a -mtune=cortex-a8 -mfpu=neon \
+                 -ffast-math -fsingle-precision-constant \
+                 -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr
+KBUILD_AFLAGS   := -D__ASSEMBLY__ 
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
