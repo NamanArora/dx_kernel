@@ -1346,14 +1346,14 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 2.h2w activate.. 15<counter<40
 3.gsearch init(long press) counter >40
 */
-					if(x>=350 && x<=650 && y>=1000)
+					if(x>=320 && x<=640 && y<=25)
 					{//we are in the middle button area
-					 printk(KERN_INFO "[touch]s2w area current x %d", x);
-					 printk(KERN_INFO "[touch]s2w area current y %d", y);			 
+					 printk(KERN_INFO "[touch]l2w area current x %d", x);
+					 printk(KERN_INFO "[touch]l2w area current y %d", y);			 
 					 private_ts->counter++;
 					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
 					 if(private_ts->counter ==35 && private_ts->h2w_used)
-					 if(himax_s2w_resetChip())
+					 if(1)
 						{//in the meanwhile our ts gets working again, we disable our variables and call s2wfunc
 						private_ts->h2w_used=0;
 						private_ts->counter=0; 
@@ -1892,6 +1892,7 @@ static void himax_ts_late_resume(struct early_suspend *h)
 {printk(KERN_INFO "[touch]code entering himax_ts_late_resume");
 	struct himax_ts_data *ts;
 	ts = container_of(h, struct himax_ts_data, early_suspend);
+	himax_s2w_resetChip();
 	msleep(100);
 	himax8526a_resume(ts->client);
 	msleep(100);
