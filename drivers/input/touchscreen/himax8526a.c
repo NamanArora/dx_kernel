@@ -1281,7 +1281,6 @@ static int scr=1;
 	if (buf[20] == 0xFF && buf[21] == 0xFF) {
 		//finger leave area (work needed here)
 		finger_on = 0;
-		if(private_ts->h2w_used==0)
 		enable_again();
 		if (ts->event_htc_enable_type) {
 			input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, 0);
@@ -1361,6 +1360,10 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 					        s2wfunc(); 
 						}
 						}
+
+//DOUBLE TAP 2 WAKE AREA
+
+
 					
 //29
 				if (ts->event_htc_enable_type) {
@@ -1382,6 +1385,7 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 							 finger_pressed, loop_i+1, x, y, w);
 						}
 					}
+
 				}
 
 				if (ts->protocol_type == PROTOCOL_TYPE_B)
@@ -1410,9 +1414,12 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 					printk(KERN_INFO "[touch][TP]S1@%d, %d\n", x, y);
 				}
 //32
+//THIS BITCH IS STORING THE PREVIOUS TS VALUES WOHOOOOo!!!
+//TODO: IMPLEMENT DT2W HERE. WHAT ELSE CAN BE DONE HMMMMM??
+printk(KERN_INFO "[touch][before]what is this array storing %d and %d", ts->pre_finger_data[loop_i][0],ts->pre_finger_data[loop_i][1]);
 				ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
-				printk(KERN_INFO "[touch]what is this array storing %d and %d", ts->pre_finger_data[loop_i][0],ts->pre_finger_data[loop_i][1]);
+				printk(KERN_INFO "[touch][after]what is this array storing %d and %d", ts->pre_finger_data[loop_i][0],ts->pre_finger_data[loop_i][1]);
 
 				if (ts->debug_log_level & 0x2)
 					printk(KERN_INFO "[touch][TP]Finger %d=> X:%d, Y:%d w:%d, z:%d, F:%d\n",
@@ -1762,7 +1769,7 @@ static int himax8526a_remove(struct i2c_client *client)
 	return 0;
 
 }
-
+//code goes here to turn off screen..first
 static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 printk(KERN_INFO "[touch]code entering himax8526a_suspend");
@@ -1803,7 +1810,7 @@ if (ts->pdata->powerOff3V3 && ts->pdata->power)
 
 	return 0;
 }
-
+//code goes here to turn on screen..second
 static int himax8526a_resume(struct i2c_client *client)
 {
 printk(KERN_INFO "[touch]code entering himax8526a_resume");
@@ -1870,7 +1877,7 @@ printk(KERN_INFO "[touch]code entering himax8526a_resume");
 	return 0;
 }
 
-
+//code goes here to turn off screen..second
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void himax_ts_early_suspend(struct early_suspend *h)
 {printk(KERN_INFO "[touch]code entering himax_ts_early_suspend");
@@ -1880,7 +1887,7 @@ static void himax_ts_early_suspend(struct early_suspend *h)
 	himax8526a_suspend(ts->client, PMSG_SUSPEND);
 	msleep(100);
 }
-
+//code goes here to turn on screen..first
 static void himax_ts_late_resume(struct early_suspend *h)
 {printk(KERN_INFO "[touch]code entering himax_ts_late_resume");
 	struct himax_ts_data *ts;
