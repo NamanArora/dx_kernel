@@ -1132,23 +1132,47 @@ extern void himax_s2w_setinp(struct input_dev *dev) {
 EXPORT_SYMBOL(himax_s2w_setinp);
 
 static DEFINE_MUTEX(s2w_lock);
-
+int himax_s2w_resetChip() {
+ 	struct himax_ts_data *ts_data;
+ 	int ret = 0;
+ 	ts_data = private_ts;
+ 	if (ts_data->pdata->reset) {
+ 		if (ts_data->use_irq)
+ 			disable_irq_nosync(ts_data->client->irq);
+ 		else {
+ 			hrtimer_cancel(&ts_data->timer);
+ 			ret = cancel_work_sync(&ts_data->work);
+ 		}
+ 
+ 		printk(KERN_INFO "[TP]%s: Now reset the Touch chip(S2W initiated).\n", __func__);
+ 
+ 		ts_data->pdata->reset();
+ 
+ 		if (ts_data->use_irq)
+ 			enable_irq(ts_data->client->irq);
+ 		else
+ 			hrtimer_start(&ts_data->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
+ 	}
+ 	return 1;
+ }
 void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
+//need to clear junk before power on
+
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(250);
+	msleep(100);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(250);
+	msleep(100);
 	printk(KERN_INFO "[touch][TS][S2W]%s: Turn it on", __func__);
 	mutex_unlock(&s2w_lock);
-	//himax_s2w_release();
+	
 }
 static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
 
 void s2wfunc(void)
  {
-
+	
  	mutex_lock(&s2w_lock);
  	schedule_work(&himax_s2w_power_work);
 				      
@@ -1329,9 +1353,14 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 					 printk(KERN_INFO "[touch]s2w area current y %d", y);			 
 					 private_ts->counter++;
 					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
-					 if(private_ts->counter >=40 && private_ts->h2w_used){private_ts->counter=0; 
-					 s2wfunc(); private_ts->h2w_used=0;}
-					}
+					 if(private_ts->counter ==35 && private_ts->h2w_used)
+					 if(himax_s2w_resetChip())
+						{//in the meanwhile our ts gets working again, we disable our variables and call s2wfunc
+						private_ts->h2w_used=0;
+						private_ts->counter=0; 
+					        s2wfunc(); 
+						}
+						}
 					
 //29
 				if (ts->event_htc_enable_type) {
