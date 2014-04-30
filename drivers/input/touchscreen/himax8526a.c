@@ -29,8 +29,9 @@
 #include <mach/board.h>
 #include <asm/atomic.h>
 #include <mach/board_htc.h>
+#include<mach/msm_vibrator.h>
 #define FAKE_EVENT
-#define HIMAX_I2C_RETRY_TIMES 10
+#define HIMAX_I2C_RETRY_TIMES 20
 #define ESD_WORKAROUND
 
 #define SUPPORT_FINGER_DATA_CHECKSUM 0x0F
@@ -71,6 +72,7 @@ struct himax_ts_data {
 	uint8_t useScreenRes;
 	int h2w_used;
 	int counter;
+	int screen_status;
 #ifdef FAKE_EVENT
 	int fake_X_S;
 	int fake_Y_S;
@@ -79,8 +81,13 @@ struct himax_ts_data {
 #endif
 };
 static struct himax_ts_data *private_ts;
-void enable_again(){
 
+int getstate()
+{
+ return private_ts->screen_status;
+}
+void enable_again()
+{
 private_ts->counter=0;
 private_ts->h2w_used = 1;
 }
@@ -1180,7 +1187,7 @@ void s2wfunc(void)
 
 inline void himax_ts_work(struct himax_ts_data *ts)
 {
-	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
+	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2],xdefault;
 	uint8_t finger_on = 0;
 static int scr=1;
 
@@ -1338,19 +1345,13 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 				int w = buf[16 + loop_i];
 				finger_num--;
 
-/*TODO				
-current bug:sometimes the screen doesnt wake(most probably because of the touch coordinates)
-
-3 stages of pressing the middle button acc to my logic: needs to be implemented
-1.normal press of middle button to minimize.. counter<15
-2.h2w activate.. 15<counter<40
-3.gsearch init(long press) counter >40
-*/
 					if(x>=320 && x<=640 && y<=25)
 					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]l2w area current x %d", x);
 					 printk(KERN_INFO "[touch]l2w area current y %d", y);			 
 					 private_ts->counter++;
+					 if(private_ts->counter==1)//only when you are at the logo
+					 _vibrate(30);
 					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
 					 if(private_ts->counter ==35 && private_ts->h2w_used)
 					 if(1)
@@ -1416,10 +1417,29 @@ current bug:sometimes the screen doesnt wake(most probably because of the touch 
 //32
 //THIS BITCH IS STORING THE PREVIOUS TS VALUES WOHOOOOo!!!
 //TODO: IMPLEMENT DT2W HERE. WHAT ELSE CAN BE DONE HMMMMM??
-printk(KERN_INFO "[touch][before]what is this array storing %d and %d", ts->pre_finger_data[loop_i][0],ts->pre_finger_data[loop_i][1]);
+/*
+right to left swipe detection
+check1:that we are starting from back button
+check2:newer value of x is graeter than older one.. to detect swipe
+check3:we are in the button area
+check4:we reached last button
+*/
+if(x<=100)
+{//back button
+xdefault=x;
+printk(KERN_INFO "[touch][s2w]xdefault charged to %d",x);
+}
+
+if(xdefault<=100 &&ts->pre_finger_data[loop_i][0]<=x && y>=1000 && x==1000)
+{
+printk(KERN_INFO "[touch][s2w]we are in the s2w ladder");
+	if(getstate()) //screen on
+	s2wfunc();
+}
+
 				ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
-				printk(KERN_INFO "[touch][after]what is this array storing %d and %d", ts->pre_finger_data[loop_i][0],ts->pre_finger_data[loop_i][1]);
+				
 
 				if (ts->debug_log_level & 0x2)
 					printk(KERN_INFO "[touch][TP]Finger %d=> X:%d, Y:%d w:%d, z:%d, F:%d\n",
@@ -1772,7 +1792,10 @@ static int himax8526a_remove(struct i2c_client *client)
 //code goes here to turn off screen..first
 static int himax8526a_suspend(struct i2c_client *client, pm_message_t mesg)
 {
+
 printk(KERN_INFO "[touch]code entering himax8526a_suspend");
+private_ts->screen_status=0;
+printk(KERN_INFO "[touch]Screen state off. 0");
 	int ret;
 	uint8_t data = 0x01;
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
@@ -1813,7 +1836,10 @@ if (ts->pdata->powerOff3V3 && ts->pdata->power)
 //code goes here to turn on screen..second
 static int himax8526a_resume(struct i2c_client *client)
 {
+
 printk(KERN_INFO "[touch]code entering himax8526a_resume");
+private_ts->screen_status=1;
+printk(KERN_INFO "[touch]Screen state on. 1");
 	uint8_t data[2] = { 0 };
 	const uint8_t command_ec_128_raw_flag = 0x01;
 	const uint8_t command_ec_128_raw_baseline_flag = 0x02 | command_ec_128_raw_flag;
