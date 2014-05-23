@@ -195,7 +195,7 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH		?= $(SUBARCH)
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 ARCH		:= arm
-CROSS_COMPILE	:= /home/prototype-u/linaro_toolchains_2014/arm-linux-gnueabi-linaro_4.8.3-2014.01/bin/arm-gnueabi-
+CROSS_COMPILE	:= /home/prototype-u/toolchain/arm-linux-gnueabi-linaro_4.9.1-2014.04/bin/arm-gnueabi-
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
 SRCARCH 	:= $(ARCH)
