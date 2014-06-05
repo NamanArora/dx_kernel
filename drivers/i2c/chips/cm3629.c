@@ -614,9 +614,7 @@ static void enable_als_interrupt(void)
 static void report_lsensor_input_event(struct cm3629_info *lpi, bool resume)
 {
 	uint32_t adc_value = 0;
-#ifdef CONFIG_WSENSOR_ENABLE
-	int gain = 0;
-#endif
+
 	uint32_t w_adc_value = 0;
 
 	int level = 0, i, ret = 0;
@@ -627,19 +625,6 @@ static void report_lsensor_input_event(struct cm3629_info *lpi, bool resume)
 	if (lpi->ws_calibrate) {
 		ret = get_ws_adc_value(&w_adc_value, resume);
 	}
-#ifdef CONFIG_WSENSOR_ENABLE
-	ret = get_ws_adc_value(&w_adc_value, resume);
-	D("[LS][cm3629] %s: before w sensor tuned, ws_adc = 0x%X, ls_adc = 0x%X, ls_calibrate = %d, ws_calibrate = %d\n",
-		__func__, w_adc_value, adc_value, lpi->ls_calibrate, lpi->ws_calibrate);
-			
-	if( adc_value >= (w_adc_value*12/10) )
-		gain = 100;
-	else
-		gain = 18;
-
-	adc_value = adc_value * gain / 100;
-	D("[LS][cm3629] %s:  after w sensor tuned, ls_adc * %d percent = 0x%X\n", __func__, gain, adc_value);
-#endif
 
 	if (resume) {
 		if (sensor_chipId[0] != 0x29)
@@ -680,7 +665,7 @@ static void report_lsensor_input_event(struct cm3629_info *lpi, bool resume)
 		lpi->current_adc = w_adc_value;
 
 
-
+printk(KERN_INFO "[light]adc_value= %d", adc_value);
 	
 	if (f_cm3629_level >= 0) {
 		D("[LS][cm3629] L-sensor force level enable level=%d f_cm3629_level=%d\n", level, f_cm3629_level);
