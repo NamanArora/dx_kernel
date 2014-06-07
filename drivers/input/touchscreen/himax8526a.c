@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#include <linux/pl_sensor.h>
 #include <linux/himax8526a.h>
 #include <linux/delay.h>
 #include <linux/earlysuspend.h>
@@ -73,6 +73,7 @@ struct himax_ts_data {
 	int h2w_used;
 	int counter;
 	int screen_status;
+	int inside_pocket;
 #ifdef FAKE_EVENT
 	int fake_X_S;
 	int fake_Y_S;
@@ -280,7 +281,7 @@ start:
 		CC(type3_selected->c49); CC(type3_selected->c50);
 		msleep(1);
 	}
-	
+
 	cmd[0] = 0x42; cmd[1] = 0x02;
 	result = i2c_himax_master_write(client, cmd , 2, firstRetry);
 
@@ -288,7 +289,7 @@ start:
 		printk(KERN_INFO "[touch][TP]No Himax chip inside\n");
 		return -EIO;
 	} else {
-		
+
 		cmd[0] = 0xF3;
 		cmd[1] = 0x40;
 		i2c_himax_master_write(client, cmd , 2, normalRetry);
@@ -430,10 +431,10 @@ start:
 		}
 
 		if (type1_checksum || type2_checksum || type3_checksum) {
-			
+
 			cmd[0] = 0xAB; cmd[1] = 0x00;
 			i2c_himax_master_write(client, cmd , 2, normalRetry);
-			
+
 			cmd[1] = 0x01;
 			i2c_himax_master_write(client, cmd , 2, normalRetry);
 		}
@@ -483,11 +484,11 @@ start:
 		printk(KERN_INFO "[touch][TP]myCheckSum: 0x%X, 0x%X\n", myCheckSum%0x100, (myCheckSum%0x10000)/0x100);
 
 		if (type1_checksum || type2_checksum || type3_checksum) {
-		
+
 			cmd[0] = 0xAB; cmd[1] = 0x10;
 			i2c_himax_master_write(client, cmd , 2, normalRetry);
 
-			
+
 			if (type1_checksum) {
 				printk(KERN_INFO "[touch][TP]Check type 1 checksum, 0x%X, 0x%X.\n", type1_selected->checksum[1], type1_selected->checksum[2]);
 				i2c_himax_master_write(client, type1_selected->checksum, sizeof(type1_selected->checksum), normalRetry);
@@ -499,15 +500,15 @@ start:
 				i2c_himax_master_write(client, type3_selected->checksum, sizeof(type3_selected->checksum), normalRetry);
 			}
 
-			
+
 			i2c_himax_read(client, 0xAB, &Data, 1, normalRetry);
 		}
 
 		++retryTimes;
-	
+
 	} while (Data != 0x10 && ((uint32_t)type1_checksum ^ (uint32_t)type2_checksum ^ (uint32_t)type3_checksum));
 
-	
+
 	cmd[0] = 0x42; cmd[1] = 0x02;
 	i2c_himax_master_write(client, cmd , 2, normalRetry);
 
@@ -1150,11 +1151,11 @@ int himax_s2w_resetChip() {
  			hrtimer_cancel(&ts_data->timer);
  			ret = cancel_work_sync(&ts_data->work);
  		}
- 
+
  		printk(KERN_INFO "[TP]%s: Now reset the Touch chip(S2W initiated).\n", __func__);
- 
+
  		ts_data->pdata->reset();
- 
+
  		if (ts_data->use_irq)
  			enable_irq(ts_data->client->irq);
  		else
@@ -1173,23 +1174,23 @@ void himax_s2w_power(struct work_struct *himax_s2w_power_work) {
 	msleep(100);
 	printk(KERN_INFO "[touch][TS][S2W]%s: Turn it on", __func__);
 	mutex_unlock(&s2w_lock);
-	
+
 }
 static DECLARE_WORK(himax_s2w_power_work, himax_s2w_power);
 
 void s2wfunc(void)
  {
-	
+
  	mutex_lock(&s2w_lock);
  	schedule_work(&himax_s2w_power_work);
-				      
+
  }
 
 inline void himax_ts_work(struct himax_ts_data *ts)
 {
-	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2],xdefault;
+	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
 	uint8_t finger_on = 0;
-static int scr=1;
+static int scr=1,xdefault;
 
 #ifdef ESD_WORKAROUND
 	uint32_t checksum;
@@ -1254,7 +1255,7 @@ static int scr=1;
 	if (ts->diag_command >= 1 && ts->diag_command <= 6) {
 		int mul_num, self_num;
 		int index = 0;
-		
+
 		mul_num = ts->x_channel * ts->y_channel;
 		self_num = ts->x_channel + ts->y_channel;
 
@@ -1263,7 +1264,7 @@ static int scr=1;
 			index = (buf[24] - 1) * 50;
 
 			for (loop_i = 0; loop_i < 50; loop_i++) {
-				if (index < mul_num) { 
+				if (index < mul_num) {
 					if ((buf[loop_i * 2 + 28] & 0x80) == 0x80)
 						ts->diag_mutual[index + loop_i] = 0 -
 							((buf[loop_i * 2 + 28] << 8 | buf[loop_i * 2 + 29]) & 0x4FFF);
@@ -1348,24 +1349,28 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 					if(x>=320 && x<=640 && y<=25)
 					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]l2w area current x %d", x);
-					 printk(KERN_INFO "[touch]l2w area current y %d", y);			 
+					 printk(KERN_INFO "[touch]l2w area current y %d", y);
 					 private_ts->counter++;
 					 if(private_ts->counter==1)//only when you are at the logo
 					 _vibrate(30);
 					 printk(KERN_INFO "[touch]current private_ts->counter value %d", private_ts->counter);
 					 if(private_ts->counter ==35 && private_ts->h2w_used)
-					 if(1)
+					 {
+
+					 private_ts->inside_pocket=pocket_detection_check(); //last checkpoint
+					 printk(KERN_INFO "[touch]inside_pocket= %d", private_ts->inside_pocket);
+					 if(!private_ts->inside_pocket)
 						{//in the meanwhile our ts gets working again, we disable our variables and call s2wfunc
 						private_ts->h2w_used=0;
-						private_ts->counter=0; 
-					        s2wfunc(); 
+						private_ts->counter=0;
+					        s2wfunc();
 						}
 						}
-
+					}
 //DOUBLE TAP 2 WAKE AREA
 
 
-					
+
 //29
 				if (ts->event_htc_enable_type) {
 					printk(KERN_INFO "[touch]code entering 29");
@@ -1424,11 +1429,6 @@ check2:newer value of x is graeter than older one.. to detect swipe
 check3:we are in the button area
 check4:we reached last button
 */
-if(x<=100)
-{//back button
-xdefault=x;
-printk(KERN_INFO "[touch][s2w]xdefault charged to %d",x);
-}
 
 if(xdefault<=100 &&ts->pre_finger_data[loop_i][0]<=x && y>=1000 && x==1000)
 {
@@ -1439,7 +1439,7 @@ printk(KERN_INFO "[touch][s2w]we are in the s2w ladder");
 
 				ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
-				
+
 
 				if (ts->debug_log_level & 0x2)
 					printk(KERN_INFO "[touch][TP]Finger %d=> X:%d, Y:%d w:%d, z:%d, F:%d\n",
@@ -1960,3 +1960,4 @@ module_exit(himax8526a_exit);
 
 MODULE_DESCRIPTION("Himax8526a driver");
 MODULE_LICENSE("GPL");
+
