@@ -74,6 +74,10 @@ struct himax_ts_data {
 	int counter;
 	int screen_status;
 	int inside_pocket;
+	int delta;
+	int old_x;
+	int back;
+	int menu;
 #ifdef FAKE_EVENT
 	int fake_X_S;
 	int fake_Y_S;
@@ -89,6 +93,9 @@ int getstate()
 }
 void enable_again()
 {
+private_ts->back=0;
+private_ts->delta=0;
+private_ts->old_x=0;
 private_ts->counter=0;
 private_ts->h2w_used = 1;
 }
@@ -1185,7 +1192,40 @@ void s2wfunc(void)
  	schedule_work(&himax_s2w_power_work);
 
  }
+void detect_sweep(int x, int y)
+{
+printk(KERN_INFO "[s2w]sweep x= %d", x);
+printk(KERN_INFO "[s2w]sweep y= %d", y);
 
+    if(x<200)
+    private_ts->back=1;
+printk(KERN_INFO "[s2w]back= %d", private_ts->back);
+
+	if(x>900)
+    	private_ts->menu=1;
+	printk(KERN_INFO "[s2w]menu= %d", private_ts->back);
+	
+    if(x!=private_ts->old_x)
+    private_ts->delta=x - private_ts->old_x;
+printk(KERN_INFO "[s2w]private_ts->delta= %d", private_ts->delta);
+
+    private_ts->old_x=x;
+printk(KERN_INFO "[s2w]private_ts->old_x= %d", private_ts->old_x);
+
+    if(private_ts->back && private_ts->delta>0 && !getstate())
+    if(x>=900)
+{
+    private_ts->back=0;
+    s2wfunc();
+}
+
+  if(private_ts->menu && private_ts->delta<0 && getstate())
+    if(x<=200)
+{
+    private_ts->menu=0;
+    s2wfunc();
+}
+}
 inline void himax_ts_work(struct himax_ts_data *ts)
 {
 	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
@@ -1429,13 +1469,8 @@ check2:newer value of x is graeter than older one.. to detect swipe
 check3:we are in the button area
 check4:we reached last button
 */
-
-if(xdefault<=100 &&ts->pre_finger_data[loop_i][0]<=x && y>=1000 && x==1000)
-{
-printk(KERN_INFO "[touch][s2w]we are in the s2w ladder");
-	if(getstate()) //screen on
-	s2wfunc();
-}
+if(y>=990)
+detect_sweep(x,y);
 
 				ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
