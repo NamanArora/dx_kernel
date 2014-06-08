@@ -94,6 +94,7 @@ int getstate()
 void enable_again()
 {
 private_ts->back=0;
+private_ts->menu=0;
 private_ts->delta=0;
 private_ts->old_x=0;
 private_ts->counter=0;
@@ -1328,6 +1329,7 @@ static int scr=1,xdefault;
 
 	if (buf[20] == 0xFF && buf[21] == 0xFF) {
 		//finger leave area (work needed here)
+		printk(KERN_INFO "[s2w]finger leave loop");
 		finger_on = 0;
 		enable_again();
 		if (ts->event_htc_enable_type) {
@@ -1469,7 +1471,7 @@ check2:newer value of x is graeter than older one.. to detect swipe
 check3:we are in the button area
 check4:we reached last button
 */
-if(y>=990)
+if(y>=970)
 detect_sweep(x,y);
 
 				ts->pre_finger_data[loop_i][0] = x;
