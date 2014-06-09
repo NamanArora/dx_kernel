@@ -76,8 +76,11 @@ struct himax_ts_data {
 	int inside_pocket;
 	int delta;
 	int old_x;
+	int old_y;
 	int back;
 	int menu;
+	int lock;
+	int flick;
 #ifdef FAKE_EVENT
 	int fake_X_S;
 	int fake_Y_S;
@@ -93,10 +96,13 @@ int getstate()
 }
 void enable_again()
 {
+private_ts->flick=1;
+private_ts->lock=0;
 private_ts->back=0;
 private_ts->menu=0;
 private_ts->delta=0;
 private_ts->old_x=0;
+private_ts->old_y=0;
 private_ts->counter=0;
 private_ts->h2w_used = 1;
 }
@@ -1217,6 +1223,7 @@ printk(KERN_INFO "[s2w]private_ts->old_x= %d", private_ts->old_x);
     if(x>=900)
 {
     private_ts->back=0;
+    _vibrate(30);
     s2wfunc();
 }
 
@@ -1224,9 +1231,27 @@ printk(KERN_INFO "[s2w]private_ts->old_x= %d", private_ts->old_x);
     if(x<=200)
 {
     private_ts->menu=0;
+    _vibrate(30);
     s2wfunc();
 }
 }
+
+void flick(int y)
+{
+if(!private_ts->lock)
+{
+private_ts->old_y=y; 
+private_ts->lock=1;
+}
+private_ts->delta= abs(y- private_ts->old_y);
+if(private_ts->delta>400 && !pocket_detection_check() && private_ts->flick)
+{
+private_ts->flick=0;
+_vibrate(30);
+s2wfunc();
+}
+}
+
 inline void himax_ts_work(struct himax_ts_data *ts)
 {
 	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
@@ -1473,8 +1498,11 @@ check4:we reached last button
 */
 if(y>=970)
 detect_sweep(x,y);
-
-				ts->pre_finger_data[loop_i][0] = x;
+if(!getstate())
+{
+flick(y);
+}
+			ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
 
 
