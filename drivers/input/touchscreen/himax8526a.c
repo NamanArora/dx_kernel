@@ -81,6 +81,8 @@ struct himax_ts_data {
 	int menu;
 	int lock;
 	int flick;
+	int xlock;
+	int ylock;
 #ifdef FAKE_EVENT
 	int fake_X_S;
 	int fake_Y_S;
@@ -96,6 +98,8 @@ int getstate()
 }
 void enable_again()
 {
+private_ts->xlock=0;
+private_ts->ylock=0;
 private_ts->flick=1;
 private_ts->lock=0;
 private_ts->back=0;
@@ -1204,20 +1208,26 @@ void detect_sweep(int x, int y)
 printk(KERN_INFO "[s2w]sweep x= %d", x);
 printk(KERN_INFO "[s2w]sweep y= %d", y);
 
-    if(x<200)
-    private_ts->back=1;
-printk(KERN_INFO "[s2w]back= %d", private_ts->back);
+    if(x<200 && !private_ts->xlock)
+{
+ private_ts->old_x=x;
+ private_ts->back=1;
+ printk(KERN_INFO "[s2w]back= %d", private_ts->back);
+ private_ts->xlock=1;
+}
+   
 
-	if(x>900)
+	if(x>900 && !private_ts->ylock)
+{
+	private_ts->old_x=x;
     	private_ts->menu=1;
 	printk(KERN_INFO "[s2w]menu= %d", private_ts->back);
-	
-    if(x!=private_ts->old_x)
+	private_ts->ylock=1;
+}
+
     private_ts->delta=x - private_ts->old_x;
 printk(KERN_INFO "[s2w]private_ts->delta= %d", private_ts->delta);
 
-    private_ts->old_x=x;
-printk(KERN_INFO "[s2w]private_ts->old_x= %d", private_ts->old_x);
 
     if(private_ts->back && private_ts->delta>0 && !getstate())
     if(x>=900)
