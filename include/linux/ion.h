@@ -39,6 +39,14 @@ enum ion_heap_type {
 #define ION_HEAP_CP_MASK		(1 << ION_HEAP_TYPE_CP)
 #define ION_HEAP_TYPE_DMA_MASK         (1 << ION_HEAP_TYPE_DMA)
 
+/**
+ * heap flags - the lower 16 bits are used by core ion, the upper 16
+ * bits are reserved for use by the heaps themselves.
+ */
+#define ION_FLAG_CACHED 1    /* mappings of this buffer should be
+             cached, ion will do cache
+             maintenance when the buffer is
+             mapped for dma */
 
 
 enum ion_heap_ids {
@@ -359,18 +367,35 @@ static inline int msm_ion_do_cache_op(struct ion_client *client,
 #endif 
 #endif 
 
-
+/**
+ * struct ion_fd_data - metadata passed to/from userspace for a handle/fd pair
+ * @handle:	a handle
+ * @fd:		a file descriptor representing that handle
+ *
+ * For ION_IOC_SHARE or ION_IOC_MAP userspace populates the handle field with
+ * the handle returned from ion alloc, and the kernel returns the file
+ * descriptor to share or map in the fd field.  For ION_IOC_IMPORT, userspace
+ * provides the file descriptor and the kernel returns the handle.
+ */
+struct ion_fd_data {
+	struct ion_handle *handle;
+	int fd;
+};
 struct ion_allocation_data {
+	size_t len;
+	size_t align;
+        unsigned int heap_mask;
+	unsigned int flags;
+	struct ion_handle *handle;
+};
+
+struct ion_allocation_data_compat {
 	size_t len;
 	size_t align;
 	unsigned int flags;
 	struct ion_handle *handle;
 };
 
-struct ion_fd_data {
-	struct ion_handle *handle;
-	int fd;
-};
 
 struct ion_handle_data {
 	struct ion_handle *handle;
@@ -400,24 +425,49 @@ struct ion_flag_data {
 #define ION_IOC_ALLOC		_IOWR(ION_IOC_MAGIC, 0, \
 				      struct ion_allocation_data)
 
+#define ION_IOC_ALLOC_COMPAT _IOWR(ION_IOC_MAGIC, 0, \
+				      struct ion_allocation_data_compat)
+
 #define ION_IOC_FREE		_IOWR(ION_IOC_MAGIC, 1, struct ion_handle_data)
 
 #define ION_IOC_MAP		_IOWR(ION_IOC_MAGIC, 2, struct ion_fd_data)
 
 #define ION_IOC_SHARE		_IOWR(ION_IOC_MAGIC, 4, struct ion_fd_data)
 
-#define ION_IOC_IMPORT		_IOWR(ION_IOC_MAGIC, 5, int)
+#define ION_IOC_IMPORT    _IOWR(ION_IOC_MAGIC, 5, struct ion_fd_data)
+
+#define ION_IOC_IMPORT_COMPAT	_IOWR(ION_IOC_MAGIC, 5, int)
 
 #define ION_IOC_CUSTOM		_IOWR(ION_IOC_MAGIC, 6, struct ion_custom_data)
 
 
-#define ION_IOC_CLEAN_CACHES	_IOWR(ION_IOC_MAGIC, 7, \
-						struct ion_flush_data)
-#define ION_IOC_INV_CACHES	_IOWR(ION_IOC_MAGIC, 8, \
-						struct ion_flush_data)
-#define ION_IOC_CLEAN_INV_CACHES	_IOWR(ION_IOC_MAGIC, 9, \
+#define ION_IOC_INV_CACHES  _IOWR(ION_IOC_MAGIC, 21, \
 						struct ion_flush_data)
 
-#define ION_IOC_GET_FLAGS		_IOWR(ION_IOC_MAGIC, 10, \
+#define ION_IOC_INV_CACHES_COMPAT	_IOWR(ION_IOC_MAGIC, 8, \
+					    struct ion_flush_data)
+
+#define ION_IOC_CLEAN_CACHES  _IOWR(ION_IOC_MAGIC, 20, \
+						struct ion_flush_data)
+#define ION_IOC_CLEAN_CACHES_COMPAT	_IOWR(ION_IOC_MAGIC, 7, \
+						struct ion_flush_data)
+
+#define ION_IOC_CLEAN_INV_CACHES  _IOWR(ION_IOC_MAGIC, 22, \
+						struct ion_flush_data)
+
+#define ION_IOC_CLEAN_INV_CACHES_COMPAT	_IOWR(ION_IOC_MAGIC, 9, \
+					    struct ion_flush_data)
+
+#define ION_IOC_GET_FLAGS    _IOWR(ION_IOC_MAGIC, 23, \
 						struct ion_flag_data)
-#endif 
+
+#define ION_IOC_GET_FLAGS_COMPAT _IOWR(ION_IOC_MAGIC, 10, \
+              struct ion_flag_data)
+/**
+ * DOC: ION_IOC_SYNC - BOGUS
+ *
+ * NOT SUPPORTED
+ */
+#define ION_IOC_SYNC    _IOWR(ION_IOC_MAGIC, 42, \
+            struct ion_flag_data)
+#endif /* _LINUX_ION_H */

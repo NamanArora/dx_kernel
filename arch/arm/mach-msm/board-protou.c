@@ -11,6 +11,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include<linux/msm_ion.h>
 #include <linux/gpio_event.h>
 #include <linux/memblock.h>
 #include <asm/mach-types.h>
@@ -68,7 +69,7 @@
 #include <mach/htc_headset_one_wire.h>
 #include <linux/ds2746_battery.h>
 #include <linux/tps65200.h>
-#include <linux/ion.h>
+
 #include <asm/setup.h>
 #include "devices.h"
 #include "timer.h"
