@@ -37,7 +37,9 @@
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
 #include <linux/sched.h>
+#include <linux/of_fdt.h>
 
+/* fixme */
 #include <asm/tlbflush.h>
 #include <../../mm/mm.h>
 #include <linux/fmem.h>
@@ -79,6 +81,10 @@ void write_to_strongly_ordered_memory(void) { }
 #endif
 EXPORT_SYMBOL(write_to_strongly_ordered_memory);
 
+/* These cache related routines make the assumption (if outer cache is
+ * available) that the associated physical memory is contiguous.
+ * They will operate on all (L1 and L2 if present) caches.
+ */
 void clean_and_invalidate_caches(unsigned long vstart,
 	unsigned long length, unsigned long pstart)
 {
@@ -105,6 +111,13 @@ void * __init alloc_bootmem_aligned(unsigned long size, unsigned long alignment)
 	void *unused_addr = NULL;
 	unsigned long addr, tmp_size, unused_size;
 
+	/* Allocate maximum size needed, see where it ends up.
+	 * Then free it -- in this path there are no other allocators
+	 * so we can depend on getting the same address back
+	 * when we allocate a smaller piece that is aligned
+	 * at the end (if necessary) and the piece we really want,
+	 * then free the unused first piece.
+	 */
 
 	tmp_size = size + alignment - PAGE_SIZE;
 	addr = (unsigned long)alloc_bootmem(tmp_size);
@@ -161,9 +174,9 @@ static unsigned long stable_size(struct membank *mb,
 	if (!unstable_limit)
 		return mb->size;
 
-	
+	/* Check for 32 bit roll-over */
 	if (upper_limit >= mb->start) {
-		
+		/* If we didn't roll over we can safely make the check below */
 		if (upper_limit <= unstable_limit)
 			return mb->size;
 	}
@@ -173,6 +186,7 @@ static unsigned long stable_size(struct membank *mb,
 	return unstable_limit - mb->start;
 }
 
+/* stable size of all memory banks contiguous to and below this one */
 static unsigned long total_stable_size(unsigned long bank)
 {
 	int i;
@@ -242,6 +256,17 @@ static void __init reserve_memory_for_mempools(void)
 		if (mt->flags & MEMTYPE_FLAGS_FIXED || !mt->size)
 			continue;
 
+		/* We know we will find memory bank(s) of the proper size
+		 * as we have limited the size of the memory pool for
+		 * each memory type to the largest total size of the memory
+		 * banks which are contiguous and of the correct memory type.
+		 * Choose the memory bank with the highest physical
+		 * address which is large enough, so that we will not
+		 * take memory from the lowest memory bank which the kernel
+		 * is in (and cause boot problems) and so that we might
+		 * be able to steal memory that would otherwise become
+		 * highmem. However, do not use unstable memory.
+		 */
 		for (i = meminfo.nr_banks - 1; i >= 0; i--) {
 			mb = &meminfo.bank[i];
 			membank_type =
@@ -254,6 +279,10 @@ static void __init reserve_memory_for_mempools(void)
 					reserve_info->low_unstable_address);
 				if (!size)
 					continue;
+				/* mt->size may be larger than size, all this
+				 * means is that we are carving the memory pool
+				 * out of multiple contiguous memory banks.
+				 */
 				mt->start = mb->start + (size - mt->size);
 				ret = memblock_remove(mt->start, mt->size);
 				BUG_ON(ret);
@@ -306,7 +335,7 @@ void __init msm_reserve(void)
 
 static int get_ebi_memtype(void)
 {
-	
+	/* on 7x30 and 8x55 "EBI1 kernel PMEM" is really on EBI0 */
 	if (cpu_is_msm7x30() || cpu_is_msm8x55())
 		return MEMTYPE_EBI0;
 	return MEMTYPE_EBI1;
@@ -332,7 +361,7 @@ unsigned int msm_ttbr0;
 
 void store_ttbr0(void)
 {
-	
+	/* Store TTBR0 for post-mortem debugging purposes. */
 	asm("mrc p15, 0, %0, c2, c0, 0\n"
 		: "=r" (msm_ttbr0));
 }
@@ -356,4 +385,127 @@ unsigned long get_ddr_size(void)
 		ret += meminfo.bank[i].size;
 
 	return ret;
+}
+
+static char * const memtype_names[] = {
+	[MEMTYPE_SMI_KERNEL] = "SMI_KERNEL",
+	[MEMTYPE_SMI]	= "SMI",
+	[MEMTYPE_EBI0] = "EBI0",
+	[MEMTYPE_EBI1] = "EBI1",
+};
+
+int msm_get_memory_type_from_name(const char *memtype_name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(memtype_names); i++) {
+		if (memtype_names[i] &&
+		    strcmp(memtype_name, memtype_names[i]) == 0)
+			return i;
+	}
+
+	pr_err("Could not find memory type %s\n", memtype_name);
+	return -EINVAL;
+}
+
+static int reserve_memory_type(const char *mem_name,
+				struct memtype_reserve *reserve_table,
+				int size)
+{
+	int ret = msm_get_memory_type_from_name(mem_name);
+
+	if (ret >= 0) {
+		reserve_table[ret].size += size;
+		ret = 0;
+	}
+	return ret;
+}
+
+static int check_for_compat(unsigned long node)
+{
+	char **start = __compat_exports_start;
+
+	for ( ; start < __compat_exports_end; start++)
+		if (of_flat_dt_is_compatible(node, *start))
+			return 1;
+
+	return 0;
+}
+
+int __init dt_scan_for_memory_reserve(unsigned long node, const char *uname,
+		int depth, void *data)
+{
+	char *memory_name_prop;
+	unsigned int *memory_remove_prop;
+	unsigned long memory_name_prop_length;
+	unsigned long memory_remove_prop_length;
+	unsigned long memory_size_prop_length;
+	unsigned int *memory_size_prop;
+	unsigned int memory_size;
+	unsigned int memory_start;
+	int ret;
+
+	memory_name_prop = of_get_flat_dt_prop(node,
+						"qcom,memory-reservation-type",
+						&memory_name_prop_length);
+	memory_remove_prop = of_get_flat_dt_prop(node,
+						"qcom,memblock-remove",
+						&memory_remove_prop_length);
+
+	if (memory_name_prop || memory_remove_prop) {
+		if (!check_for_compat(node))
+			goto out;
+	} else {
+		goto out;
+	}
+
+	if (memory_name_prop) {
+		if (strnlen(memory_name_prop, memory_name_prop_length) == 0) {
+			WARN(1, "Memory name was malformed\n");
+			goto mem_remove;
+		}
+
+		memory_size_prop = of_get_flat_dt_prop(node,
+						"qcom,memory-reservation-size",
+						&memory_size_prop_length);
+
+		if (memory_size_prop &&
+		    (memory_size_prop_length == sizeof(unsigned int))) {
+			memory_size = be32_to_cpu(*memory_size_prop);
+
+			if (reserve_memory_type(memory_name_prop,
+						data, memory_size) == 0)
+				pr_info("%s reserved %s size %x\n",
+					uname, memory_name_prop, memory_size);
+			else
+				WARN(1, "Node %s reserve failed\n",
+						uname);
+		} else {
+			WARN(1, "Node %s specified bad/nonexistent size\n",
+					uname);
+		}
+	}
+
+mem_remove:
+
+	if (memory_remove_prop) {
+		if (memory_remove_prop_length != (2*sizeof(unsigned int))) {
+			WARN(1, "Memory remove malformed\n");
+			goto out;
+		}
+
+		memory_start = be32_to_cpu(memory_remove_prop[0]);
+		memory_size = be32_to_cpu(memory_remove_prop[1]);
+
+		ret = memblock_remove(memory_start, memory_size);
+		if (ret)
+			WARN(1, "Failed to remove memory %x-%x\n",
+				memory_start, memory_start+memory_size);
+		else
+			pr_info("Node %s removed memory %x-%x\n", uname,
+				memory_start, memory_start+memory_size);
+	}
+
+out:
+	return 0;
 }
