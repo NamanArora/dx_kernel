@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  *
  */
+#include "tsmods.h"
 #include <linux/pl_sensor.h>
 #include <linux/himax8526a.h>
 #include <linux/delay.h>
@@ -91,7 +92,7 @@ struct himax_ts_data {
 #endif
 };
 static struct himax_ts_data *private_ts;
-
+#ifdef CONFIG_TSMODS
 int getstate()
 {
  return private_ts->screen_status;
@@ -110,6 +111,8 @@ private_ts->old_y=0;
 private_ts->counter=0;
 private_ts->h2w_used = 1;
 }
+#endif
+
 #define SWITCH_TO_HTC_EVENT_ONLY	1
 #define INJECT_HTC_EVENT		2
 
@@ -1150,6 +1153,9 @@ static void himax_touch_sysfs_deinit(void)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_sr_en.attr);
 	kobject_del(android_touch_kobj);
 }
+
+#ifdef CONFIG_TSMODS
+
 //s2w related functions
 static struct input_dev * sweep2wake_pwrdev;
 extern void himax_s2w_setinp(struct input_dev *dev) {
@@ -1215,7 +1221,7 @@ printk(KERN_INFO "[s2w]sweep y= %d", y);
  printk(KERN_INFO "[s2w]back= %d", private_ts->back);
  private_ts->xlock=1;
 }
-   
+
 
 	if(x>900 && !private_ts->ylock)
 {
@@ -1250,7 +1256,7 @@ void flick(int y)
 {
 if(!private_ts->lock)
 {
-private_ts->old_y=y; 
+private_ts->old_y=y;
 private_ts->lock=1;
 }
 private_ts->delta= abs(y- private_ts->old_y);
@@ -1262,6 +1268,7 @@ s2wfunc();
 }
 }
 
+#endif
 inline void himax_ts_work(struct himax_ts_data *ts)
 {
 	uint8_t buf[128], loop_i, finger_num, finger_pressed, hw_reset_check[2];
@@ -1363,10 +1370,12 @@ static int scr=1,xdefault;
 	}
 
 	if (buf[20] == 0xFF && buf[21] == 0xFF) {
+#ifdef CONFIG_TSMODS
 		//finger leave area (work needed here)
 		printk(KERN_INFO "[s2w]finger leave loop");
-		finger_on = 0;
 		enable_again();
+#endif
+		finger_on=0;
 		if (ts->event_htc_enable_type) {
 			input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, 0);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION, 1 << 31);
@@ -1422,8 +1431,8 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 				int y = (buf[base + 2] << 8 | buf[base + 3]);
 				int w = buf[16 + loop_i];
 				finger_num--;
-
-					if(x>=320 && x<=640 && y<=25)
+#ifdef CONFIG_TSMODS
+					if(x>=320 && x<=640 && y<=25 && l2w_activate)
 					{//we are in the middle button area
 					 printk(KERN_INFO "[touch]l2w area current x %d", x);
 					 printk(KERN_INFO "[touch]l2w area current y %d", y);
@@ -1444,6 +1453,7 @@ printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 						}
 						}
 					}
+#endif
 //DOUBLE TAP 2 WAKE AREA
 
 
@@ -1506,12 +1516,15 @@ check2:newer value of x is graeter than older one.. to detect swipe
 check3:we are in the button area
 check4:we reached last button
 */
-if(y>=970)
+#ifdef CONFIG_TSMODS
+if(y>=970 && s2w_activate)
 detect_sweep(x,y);
-if(!getstate())
+if(!getstate() && f2w_activate)
 {
 flick(y);
 }
+#endif
+
 			ts->pre_finger_data[loop_i][0] = x;
 				ts->pre_finger_data[loop_i][1] = y;
 
