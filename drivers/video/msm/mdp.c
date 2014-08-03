@@ -44,7 +44,7 @@
 #include "mipi_dsi.h"
 
 uint32 mdp4_extn_disp;
-
+static struct msm_panel_common_pdata *mdp_pdata;
 static struct clk *mdp_clk;
 static struct clk *mdp_pclk;
 static struct clk *mdp_lut_clk;
@@ -1839,6 +1839,9 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 		/* LCDC UnderFlow */
 		if (mdp_interrupt & LCDC_UNDERFLOW) {
 			mdp_lcdc_underflow_cnt++;
+			if (mdp_pdata && mdp_pdata->mdp_color_enhance) {
+ 				mdp_pdata->mdp_color_enhance();
+ 			}
 			/*when underflow happens HW resets all the histogram
 			  registers that were set before so restore them back
 			  to normal.*/
@@ -2470,6 +2473,8 @@ static int mdp_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_OVERLAY
 		mdp_hw_cursor_init();
 #endif
+		if (mdp_pdata->mdp_color_enhance)
+ 			mdp_pdata->mdp_color_enhance();
 		mdp_clk_ctrl(0);
 
 		mdp_resource_initialized = 1;
