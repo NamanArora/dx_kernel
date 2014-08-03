@@ -196,7 +196,7 @@ ARCH		?= $(SUBARCH)
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 ARCH		:= arm
 
-CROSS_COMPILE	:= /home/hell-lock/prototype-u/toolchain/arm-linux-gnueabi-linaro_4.9.1-2014.05/bin/arm-eabi-
+CROSS_COMPILE	:= /home/prototype-u/toolchain/arm-linux-gnueabi-linaro_4.9.1-2014.06/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
