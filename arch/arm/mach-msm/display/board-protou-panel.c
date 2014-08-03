@@ -1175,6 +1175,8 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.cont_splash_enabled = 0x00,
 	.gpio = 97,
 	.mdp_rev = MDP_REV_303,
+	.splash_screen_addr = 0x00,
+	.splash_screen_size = 0x00,
 	.mdp_color_enhance = protou_mdp_color_enhance,
 	.mdp_gamma = protou_mdp_gamma,
 };

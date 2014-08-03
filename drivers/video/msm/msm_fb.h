@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -80,8 +80,9 @@ struct msm_fb_data_type {
 
 	DISP_TARGET dest;
 	struct fb_info *fbi;
-
 	struct device *dev;
+
+	struct delayed_work backlight_worker;
 	boolean op_enable;
 	uint32 fb_imgType;
 	boolean sw_currently_refreshing;
@@ -99,7 +100,7 @@ struct msm_fb_data_type {
 	boolean pan_waiting;
 	struct completion pan_comp;
 
-	
+	/* vsync */
 	boolean use_mdp_vsync;
 	__u32 vsync_gpio;
 	__u32 total_lcd_lines;
@@ -153,10 +154,8 @@ struct msm_fb_data_type {
 	__u32 var_yres;
 	__u32 var_pixclock;
 	__u32 var_frame_rate;
-#if 1 
-	uint32_t width;
-	uint32_t height;
-#endif 
+	 uint32_t width;
+         uint32_t height;
 
 #ifdef MSM_FB_ENABLE_DBGFS
 	struct dentry *sub_dir;
@@ -164,9 +163,6 @@ struct msm_fb_data_type {
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
-#ifdef CONFIG_HTC_ONMODE_CHARGING
-	struct early_suspend onchg_suspend;
-#endif
 #ifdef CONFIG_FB_MSM_MDDI
 	struct early_suspend mddi_early_suspend;
 	struct early_suspend mddi_ext_early_suspend;
@@ -196,6 +192,8 @@ struct msm_fb_data_type {
 	u32 writeback_state;
 	bool writeback_active_cnt;
 	int cont_splash_done;
+	void *copy_splash_buf;
+	unsigned char *copy_splash_phys;
 };
 
 struct dentry *msm_fb_get_debugfs_root(void);
@@ -224,13 +222,12 @@ void fill_black_screen(void);
 void unfill_black_screen(void);
 int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd,
 				struct fb_info *info);
-extern void htc_mdp_sem_down(struct task_struct *current_task, struct semaphore *mutex);
-extern void htc_mdp_sem_up(struct semaphore *mutex);
 
 #ifdef CONFIG_FB_MSM_LOGO
 #define INIT_IMAGE_FILE "/initlogo.rle"
 int load_565rle_image(char *filename, bool bf_supported);
 #endif
-
+extern void htc_mdp_sem_down(struct task_struct *current_task, struct semaphore *mutex);
+extern void htc_mdp_sem_up(struct semaphore *mutex);
 #define DEFAULT_BRIGHTNESS 143
-#endif 
+#endif /* MSM_FB_H */

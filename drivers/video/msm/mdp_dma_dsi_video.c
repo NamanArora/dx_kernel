@@ -290,12 +290,8 @@ int mdp_dsi_video_off(struct platform_device *pdev)
 			memset(mfd->fbi->screen_base, 0x00, mfd->fbi->fix.smem_len);
 			hr_msleep(80);
 
-#ifdef CONFIG_MACH_DUMMY
-			ret = protodcg_lcd_off2(pdev);
-#elif defined CONFIG_MACH_PROTOU
 			ret = protou_lcd_off2(pdev);
-#else
-#endif
+
 
 			if (ret < 0) {
 				panel_next_off(pdev);
