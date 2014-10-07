@@ -1,0 +1,14 @@
+--- kernel/power/Kconfig
++++ kernel/power/Kconfig
+@@ -316,3 +316,11 @@
+ 	  Prints the time spent in suspend in the kernel log, and
+ 	  keeps statistics on the time spent in suspend in
+ 	  /sys/kernel/debug/suspend_time
++
++config QUICK_WAKEUP
++	bool "Quick wakeup"
++	depends on SUSPEND
++	default n
++	---help---
++	  Allow kernel driver to do periodic jobs without resuming the full system
++	  This option can increase battery life on android powered smartphone.
