@@ -101,7 +101,7 @@ int getstate()
 }
 void enable_again()
 {
-private_ts->timeout=jiffies+HZ/20;
+private_ts->timeout=jiffies+HZ/15;
 private_ts->xlock=0;
 private_ts->ylock=0;
 private_ts->flick=1;
@@ -1427,7 +1427,8 @@ static int scr=1,xdefault;
 printk(KERN_INFO "[touch]finger num= %d", finger_num);
 printk(KERN_INFO "[touch]finger pressed= %d", finger_pressed);
 
-		if(jiffies>private_ts->timeout)
+		if(jiffies>private_ts->timeout){
+			printk(KERN_INFO "[time]JIFFIES= %d Timeout= %d", jiffies,private_ts->timeout);
 		for (loop_i = 0; loop_i < 4; loop_i++) {
 			if (((finger_pressed >> loop_i) & 1) == 1) {
 				int base = loop_i * 4;
@@ -1561,6 +1562,11 @@ flick(y);
 					}
 				}
 			}
+		}
+		}
+		else
+		{
+			himax_s2w_resetChip();
 		}
 		ts->pre_finger_mask = finger_pressed;
 	}
@@ -2014,6 +2020,7 @@ static void himax_ts_late_resume(struct early_suspend *h)
 	msleep(100);
 	himax8526a_resume(ts->client);
 	msleep(100);
+	himax_s2w_resetChip();
 
 }
 #endif
