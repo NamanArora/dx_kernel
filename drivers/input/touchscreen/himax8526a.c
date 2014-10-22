@@ -1997,8 +1997,13 @@ printk(KERN_INFO "[touch]Screen state on. 1");
 	ts->suspend_mode = 0;
 	ts->just_resume = 1;
 
-
+	himax_s2w_resetChip();
 	return 0;
+}
+
+void upgrade_timer()
+{
+	private_ts->timeout=jiffies+HZ*1; //1SEC delay
 }
 
 //code goes here to turn off screen..second
@@ -2020,8 +2025,7 @@ static void himax_ts_late_resume(struct early_suspend *h)
 	msleep(100);
 	himax8526a_resume(ts->client);
 	msleep(100);
-	himax_s2w_resetChip();
-
+	upgrade_timer();
 }
 #endif
 
